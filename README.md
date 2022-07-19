@@ -20,7 +20,7 @@ int main(void) {
 }
 ```
 
-See the [examples](https://www.github.com/nosbod18/libwtk/tree/main/examples) for more
+See the [examples](https://www.github.com/nosbod18/wtk/tree/main/examples) for more
 
 
 ## Building

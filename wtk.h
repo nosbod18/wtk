@@ -17,31 +17,40 @@ typedef enum WtkEventType {
 } WtkEventType;
 
 typedef union WtkEventData {
-    struct { int width, height;     } resize;
-    struct { int key, sym, mods;    } key;
-    struct { int button, mods, x, y;} button, motion;
-    struct { int dx, dy;            } scroll;
+    struct { int width, height;             } resize;
+    struct { int keycode, scancode, mods;   } key;
+    struct { int button, mods, x, y;        } button, motion;
+    struct { int dx, dy;                    } scroll;
 } WtkEventData;
 
 typedef struct WtkWindow WtkWindow;
 
 typedef void WtkEventCallback(WtkWindow *window, WtkEventType type, WtkEventData const *data);
+typedef int  WtkErrorCallback(char const *fmt, ...);
 
 typedef struct WtkWindowDesc {
-    WtkEventCallback   *callback;
-    char const         *title;
-    int                 width;
-    int                 height;
-    bool                fullscreen;
-    bool                hidden;
-    bool                vsync;
+    WtkEventCallback *onEvent;
+    char const *title;
+    int width;
+    int height;
+    bool fullscreen;
+    bool hidden;
+    bool vsync;
 } WtkWindowDesc;
 
+typedef struct WtkDesc {
+    WtkErrorCallback *onError;
+} WtkDesc;
 
-WtkWindow  *wtkCreateWindow         (WtkWindowDesc const *desc);
-void        wtkDeleteWindow         (WtkWindow *window);
+
+bool        wtkInit                 (WtkDesc *desc);
+void        wtkQuit                 (void);
+void        wtkMakeCurrent          (WtkWindow const *window);
 void        wtkSwapBuffers          (WtkWindow const *window);
 void        wtkPollEvents           (void);
+
+WtkWindow  *wtkCreateWindow         (WtkWindowDesc *desc);
+void        wtkDeleteWindow         (WtkWindow *window);
 
 void        wtkGetWindowPos         (WtkWindow const *window, int *x, int *y);
 void        wtkGetWindowSize        (WtkWindow const *window, int *width, int *height);

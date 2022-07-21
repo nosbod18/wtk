@@ -1,4 +1,4 @@
-#include "../wtk.h"
+#include "wtk/wtk.h"
 #include <stdio.h>
 
 void onEvent(WtkWindow *window, WtkEventType type, WtkEventData const *data) {
@@ -49,12 +49,9 @@ void onEvent(WtkWindow *window, WtkEventType type, WtkEventData const *data) {
 }
 
 int main(void) {
-    if (!wtkInit(&(WtkDesc){0}))
-        return 1;
+    wtkInit(&(WtkDesc){0});
 
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){.onEvent = onEvent});
-    if (!window)
-        return 1;
 
     while (!wtkGetWindowShouldClose(window)) {
         wtkSwapBuffers(window);

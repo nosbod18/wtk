@@ -1,4 +1,4 @@
-#include "../wtk.h"
+#include "wtk/wtk.h"
 
 #define GLAD_GL_IMPLEMENTATION
 #include "glad.h"
@@ -31,14 +31,9 @@ static char const *fsSource =
     "}";
 
 int main(void) {
-    if (!wtkInit(&(WtkDesc){0}))
-        return 1;
+    wtkInit(&(WtkDesc){0});
 
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
-    if (!window) {
-        wtkQuit();
-        return 1;
-    }
 
     wtkMakeCurrent(window);
     gladLoaderLoadGL();

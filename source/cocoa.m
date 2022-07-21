@@ -1,5 +1,5 @@
 #define GL_SILENCE_DEPRECATION
-#include "../wtk.h"
+#include "wtk/wtk.h"
 #import <Cocoa/Cocoa.h>
 #import <stdlib.h>
 #import <stdio.h>  // printf

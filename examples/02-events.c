@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 void onEvent(WtkWindow *window, WtkEventType type, WtkEventData const *data) {
+    (void)window;
     switch (type) {
         case WtkEventType_WindowClose:
             printf("WindowClose={}\n");
@@ -51,7 +52,7 @@ int main(void) {
     if (!wtkInit(&(WtkDesc){0}))
         return 1;
 
-    WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){.onEvent = onEvent });
+    WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){.onEvent = onEvent});
     if (!window)
         return 1;
 

@@ -53,9 +53,9 @@ int main(void) {
     glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2 * sizeof(float), GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3 * sizeof(float), GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)(2 * sizeof(float)));
 
     unsigned vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vsSource, 0);
@@ -73,10 +73,6 @@ int main(void) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
     while (!wtkGetWindowShouldClose(window)) {
-        int width, height;
-        wtkGetWindowSize(window, &width, &height);
-        glViewport(0, 0, width, height);
-
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(vao);
@@ -97,4 +93,3 @@ int main(void) {
     wtkDeleteWindow(window);
     wtkQuit();
 }
-

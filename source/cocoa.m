@@ -20,8 +20,10 @@ struct WtkWindow {
 };
 
 static struct {
-    WtkErrorCallback *onError;
     AppDelegate *appDelegate;
+    WtkErrorCallback *onError;
+    void *(*alloc)(size_t size);
+    void (*free)(void *ptr);
 } WTK;
 
 static float translateYCoordinate(float y) {
@@ -63,6 +65,30 @@ static void postMouseEvent(WtkWindow *window, WtkEventType type, NSEvent const *
     });
 
     } // autoreleasepool
+}
+
+static bool validateWtkDesc(WtkDesc *desc) {
+    if (!desc)
+        return false;
+
+    if (!desc->onError) desc->onError = printf;
+    if (!desc->alloc)   desc->alloc   = malloc;
+    if (!desc->free)    desc->free    = free;
+
+    return true;
+}
+
+static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
+    if (!desc)
+        return false;
+
+    if (!desc->onEvent) desc->onEvent   = defaultEventCallback;
+    if (!desc->title)   desc->title     = "Untitled";
+    if (!desc->width)   desc->width     = 640;
+    if (!desc->height)  desc->height    = 480;
+    if (!desc->flags)   desc->flags     = WtkWindowFlags_Closable | WtkWindowFlags_Resizable | WtkWindowFlags_Titled | WtkWindowFlags_Centered;
+
+    return true;
 }
 
 @implementation AppDelegate
@@ -148,13 +174,12 @@ static void postMouseEvent(WtkWindow *window, WtkEventType type, NSEvent const *
 @end
 
 bool wtkInit(WtkDesc *desc) {
-    if (!desc)
+    if (!validateWtkDesc(desc))
         return false;
 
-    if (!desc->onError)
-        desc->onError = printf;
-
     WTK.onError = desc->onError;
+    WTK.alloc = desc->alloc;
+    WTK.free = desc->free;
 
     [NSApplication sharedApplication];
     WTK.appDelegate = [[AppDelegate alloc] init];
@@ -185,11 +210,7 @@ void wtkPollEvents(void) {
     @autoreleasepool {
 
     while (true) {
-        NSEvent *event = [NSApp
-            nextEventMatchingMask:NSEventMaskAny
-                        untilDate:nil
-                           inMode:NSDefaultRunLoopMode
-                          dequeue:YES];
+        NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];
         if (!event)
             break;
 
@@ -202,20 +223,17 @@ void wtkPollEvents(void) {
 WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     @autoreleasepool {
 
-    if (!desc) {
-        WTK.onError("Window desc cannot be NULL\n");
-        return NULL;
-    }
+    if (!validateWtkWindowDesc(desc))
+        return false;
 
-    if (!desc->onEvent) desc->onEvent   = defaultEventCallback;
-    if (!desc->title)   desc->title     = "Untitled";
-    if (!desc->width)   desc->width     = 640;
-    if (!desc->height)  desc->height    = 480;
+    unsigned styleMask = NSWindowStyleMaskMiniaturizable;
+    if (desc->flags & WtkWindowFlags_Titled)     styleMask |= NSWindowStyleMaskTitled;
+    if (desc->flags & WtkWindowFlags_Closable)   styleMask |= NSWindowStyleMaskClosable;
+    if (desc->flags & WtkWindowFlags_Resizable)  styleMask |= NSWindowStyleMaskResizable;
 
-    unsigned styleMask = NSWindowStyleMaskTitled  | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable;
     NSRect frame = NSMakeRect(0, 0, desc->width, desc->height);
 
-    WtkWindow *window = malloc(sizeof *window);
+    WtkWindow *window = WTK.alloc(sizeof *window);
     if (!window) {
         WTK.onError("Failed to allocated window\n");
         return NULL;
@@ -271,7 +289,7 @@ void wtkDeleteWindow(WtkWindow *window) {
         window->window = nil;
     }
 
-    free(window);
+    WTK.free(window);
 
     } // autoreleasepool
 }

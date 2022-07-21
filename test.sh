@@ -1,4 +1,8 @@
 #!/bin/bash
+# Compiles the files in the example directory.
+# You can specify a filename as a parameter to only compile and run that example.
+# E.g. `./test.sh 01-simple.c` will only compile examples/01-simple.c and it will
+# run it when it's finished compiling
 
 FILES="examples/${1:-*.c}"
 CFLAGS="-std=c99 -Wall -Wextra -Wpedantic"

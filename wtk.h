@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef enum WtkEventType {
     WtkEventType_WindowClose,
@@ -16,6 +17,17 @@ typedef enum WtkEventType {
     WtkEventType_KeyUp,
 } WtkEventType;
 
+typedef enum WtkWindowFlags {
+    WtkWindowFlags_Closable     = 1U << 0,
+    WtkWindowFlags_Resizable    = 1U << 2,
+    WtkWindowFlags_Centered     = 1U << 3,
+    WtkWindowFlags_Titled       = 1U << 4,
+
+    WtkWindowFlags_Visible      = 1U << 5,
+    WtkWindowFlags_Fullscreen   = 1U << 6,
+    WtkWindowFlags_Vsync        = 1U << 7,
+} WtkWindowFlags;
+
 typedef union WtkEventData {
     struct { int width, height;             } resize;
     struct { int keycode, scancode, mods;   } key;
@@ -28,18 +40,31 @@ typedef struct WtkWindow WtkWindow;
 typedef void WtkEventCallback(WtkWindow *window, WtkEventType type, WtkEventData const *data);
 typedef int  WtkErrorCallback(char const *fmt, ...);
 
-typedef struct WtkWindowDesc {
-    WtkEventCallback *onEvent;
-    char const *title;
-    int width;
-    int height;
-    bool fullscreen;
-    bool hidden;
-    bool vsync;
+typedef struct WtkWindowDesc {      // Defaults:
+    struct {
+        struct {
+            int red;                // 8
+            int green;              // 8
+            int blue;               // 8
+            int alpha;              // 8
+            int depth;              // 24
+            int stencil;            // 8
+        } bits;
+        int samples;                // 0
+        int sampleBuffers;          // 0
+    } context;
+
+    WtkEventCallback *onEvent;      // defaultOnEvent (Internal to each backend, does nothing)
+    char const *title;              // "Untitled"
+    int width;                      // 640
+    int height;                     // 480
+    WtkWindowFlags flags;           // WtkWindowFlags_Closable | WtkWindowFlags_Resizable | WtkWindowFlags_Titled | WtkWindowFlags_Centered
 } WtkWindowDesc;
 
-typedef struct WtkDesc {
-    WtkErrorCallback *onError;
+typedef struct WtkDesc {            // Defaults:
+    WtkErrorCallback *onError;      // printf
+    void *(*alloc)(size_t size);    // malloc
+    void  (*free)(void *ptr);       // free
 } WtkDesc;
 
 
@@ -64,4 +89,3 @@ void        wtkSetWindowTitle       (WtkWindow *window, char const *title);
 void        wtkSetWindowVisible     (WtkWindow *window, bool visible);
 void        wtkSetWindowFullscreen  (WtkWindow *window, bool fullscreen);
 void        wtkSetWindowShouldClose (WtkWindow *window, bool shouldClose);
-

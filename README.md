@@ -2,7 +2,7 @@
 
 ## About
 A simple cross platform window library with an API similar to [GLFW](https://www.github.com/glfw/glfw).
-Provides functions to open a window, manipulate windows, and process events.
+Provides functions to create and manipulate windows, and process events.
 
 ## Example
 ```c
@@ -14,7 +14,7 @@ int main(void) {
 
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
     if (!window)
-        return false;
+        return 1;
 
     while (!wtkGetWindowShouldClose(window)) {
         wtkSwapBuffers(window);

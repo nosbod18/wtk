@@ -1,4 +1,5 @@
 #!/bin/bash
+# Compiles the wtk library into an archive.
 
 cmd() {
     [ $VERBOSE -eq 1 ] && echo "$@"
@@ -13,7 +14,7 @@ usage() {
     echo "  --verbose           Show the commands as they are run"
     echo "  --touch             Show the commands that will be run,"
     echo "                          but don't actually execute anything"
-    echo "  --backend=<value>   Compile with the specified backend."
+    echo "  --backend=<value>   Compile wtk with the specified backend."
     echo "                          <value> can be: cocoa, xlib, xcb, wayland, or win32"
 }
 
@@ -52,7 +53,7 @@ fi
 
 CFLAGS="-std=c99 -Wall -Wextra -Wpedantic"
 
-echo "INFO: Compiling Wtk using the $BACKEND backend..."
+echo "INFO: Compiling bin/libwtk.a using the $BACKEND backend..."
 
 cmd mkdir -p bin
 cmd gcc $CFLAGS -c source/$BACKEND.? -o source/$BACKEND.o
@@ -60,4 +61,3 @@ cmd ar crs bin/libwtk.a source/$BACKEND.o
 cmd rm source/$BACKEND.o
 
 echo "INFO: Done."
-

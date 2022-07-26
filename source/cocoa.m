@@ -22,7 +22,7 @@ struct WtkWindow {
 static struct {
     AppDelegate *appDelegate;
     WtkErrorCallback *onError;
-    void *(*alloc)(size_t size);
+    void *(*malloc)(size_t size);
     void (*free)(void *ptr);
 } WTK;
 
@@ -72,7 +72,7 @@ static bool validateWtkDesc(WtkDesc *desc) {
         return false;
 
     if (!desc->onError) desc->onError = printf;
-    if (!desc->alloc)   desc->alloc   = malloc;
+    if (!desc->malloc)  desc->malloc  = malloc;
     if (!desc->free)    desc->free    = free;
 
     return true;
@@ -86,7 +86,7 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     if (!desc->title)   desc->title     = "Untitled";
     if (!desc->width)   desc->width     = 640;
     if (!desc->height)  desc->height    = 480;
-    if (!desc->flags)   desc->flags     = WtkWindowFlags_Closable | WtkWindowFlags_Resizable | WtkWindowFlags_Titled | WtkWindowFlags_Centered;
+    if (!desc->flags)   desc->flags     = WtkWindowFlag_Closable | WtkWindowFlag_Resizable | WtkWindowFlag_Titled | WtkWindowFlag_Centered;
 
     return true;
 }
@@ -137,11 +137,12 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     return YES;
 }
 
--(BOOL)windowShouldClose:(NSNotification *)notification {
-    wtkSetWindowShouldClose(m_window, true);
-    m_window->onEvent(m_window, WtkEventType_WindowClose, &(WtkEventData){0});
-    printf("hi\n");
-    return NO;
+-(void)windowDidBecomeKey:(NSNotification *)notification {
+    m_window->onEvent(m_window, WtkEventType_WindowFocusIn, &(WtkEventData){0});
+}
+
+-(void)windowDidResignKey:(NSNotification *)notification {
+    m_window->onEvent(m_window, WtkEventType_WindowFocusOut, &(WtkEventData){0});
 }
 
 -(void)windowDidResize:(NSNotification *)notification {
@@ -152,6 +153,24 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     });
 }
 
+-(BOOL)windowShouldClose:(NSNotification *)notification {
+    wtkSetWindowShouldClose(m_window, true);
+    m_window->onEvent(m_window, WtkEventType_WindowClose, &(WtkEventData){0});
+    return NO;
+}
+
+-(void)mouseDown:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+}
+
+-(void)mouseUp:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+}
+
+-(void)mouseDragged:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+}
+
 -(void)scrollWheel:(NSEvent *)event {
     m_window->onEvent(m_window, WtkEventType_MouseScroll, &(WtkEventData){
         .scroll.dx = [event scrollingDeltaX],
@@ -159,18 +178,42 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     });
 }
 
--(void)mouseDown:(NSEvent *)event           { postMouseEvent(m_window, WtkEventType_MouseDown, event); }
--(void)mouseUp:(NSEvent *)event             { postMouseEvent(m_window, WtkEventType_MouseUp, event); }
--(void)mouseDragged:(NSEvent *)event        { postMouseEvent(m_window, WtkEventType_MouseMotion, event); }
--(void)rightMouseDown:(NSEvent *)event      { postMouseEvent(m_window, WtkEventType_MouseDown, event); }
--(void)rightMouseUp:(NSEvent *)event        { postMouseEvent(m_window, WtkEventType_MouseUp, event); }
--(void)rightMouseDragged:(NSEvent *)event   { postMouseEvent(m_window, WtkEventType_MouseMotion, event); }
--(void)otherMouseDown:(NSEvent *)event      { postMouseEvent(m_window, WtkEventType_MouseDown, event); }
--(void)otherMouseUp:(NSEvent *)event        { postMouseEvent(m_window, WtkEventType_MouseUp, event); }
--(void)otherMouseDragged:(NSEvent *)event   { postMouseEvent(m_window, WtkEventType_MouseMotion, event); }
--(void)mouseMoved:(NSEvent *)event          { postMouseEvent(m_window, WtkEventType_MouseMotion, event); }
--(void)keyDown:(NSEvent *)event             { postKeyEvent(m_window, event, true); }
--(void)keyUp:(NSEvent *)event               { postKeyEvent(m_window, event, false); }
+-(void)rightMouseDown:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+}
+
+-(void)rightMouseUp:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+}
+
+-(void)rightMouseDragged:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+}
+
+-(void)otherMouseDown:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+}
+
+-(void)otherMouseUp:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+}
+
+-(void)otherMouseDragged:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+}
+
+-(void)mouseMoved:(NSEvent *)event {
+    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+}
+
+-(void)keyDown:(NSEvent *)event {
+    postKeyEvent(m_window, event, true);
+}
+
+-(void)keyUp:(NSEvent *)event {
+    postKeyEvent(m_window, event, false);
+}
+
 @end
 
 bool wtkInit(WtkDesc *desc) {
@@ -178,7 +221,7 @@ bool wtkInit(WtkDesc *desc) {
         return false;
 
     WTK.onError = desc->onError;
-    WTK.alloc = desc->alloc;
+    WTK.malloc = desc->malloc;
     WTK.free = desc->free;
 
     [NSApplication sharedApplication];
@@ -227,13 +270,13 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
         return false;
 
     unsigned styleMask = NSWindowStyleMaskMiniaturizable;
-    if (desc->flags & WtkWindowFlags_Titled)     styleMask |= NSWindowStyleMaskTitled;
-    if (desc->flags & WtkWindowFlags_Closable)   styleMask |= NSWindowStyleMaskClosable;
-    if (desc->flags & WtkWindowFlags_Resizable)  styleMask |= NSWindowStyleMaskResizable;
+    if (desc->flags & WtkWindowFlag_Titled)     styleMask |= NSWindowStyleMaskTitled;
+    if (desc->flags & WtkWindowFlag_Closable)   styleMask |= NSWindowStyleMaskClosable;
+    if (desc->flags & WtkWindowFlag_Resizable)  styleMask |= NSWindowStyleMaskResizable;
 
     NSRect frame = NSMakeRect(0, 0, desc->width, desc->height);
 
-    WtkWindow *window = WTK.alloc(sizeof *window);
+    WtkWindow *window = WTK.malloc(sizeof *window);
     if (!window) {
         WTK.onError("Failed to allocate window\n");
         return NULL;
@@ -404,4 +447,3 @@ void wtkSetWindowShouldClose(WtkWindow *window, bool shouldClose) {
 
     } // autoreleasepool
 }
-

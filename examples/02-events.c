@@ -10,11 +10,11 @@ void onEvent(WtkWindow *window, WtkEventType type, WtkEventData const *data) {
         case WtkEventType_WindowResize:
             printf("WindowResize={.width=%d, .height=%d}\n", data->resize.width, data->resize.height);
             break;
-        case WtkEventType_WindowFocus:
-            printf("WindowFocus={}\n");
+        case WtkEventType_WindowFocusIn:
+            printf("WindowFocusIn={}\n");
             break;
-        case WtkEventType_WindowUnfocus:
-            printf("WindowUnfocus={}\n");
+        case WtkEventType_WindowFocusOut:
+            printf("WindowFocusOut={}\n");
             break;
         case WtkEventType_MouseMotion:
             printf("MouseMotion={.button=%d, .mods=%u, .x=%d, .y=%d}\n",

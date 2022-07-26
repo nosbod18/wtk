@@ -1,77 +1,68 @@
 #!/bin/bash
-# Compiles the wtk library and the examples.
 
-cmd() {
-    [ $VERBOSE -eq 1 ] && echo "$@"
-    [ $TOUCH -eq 0 ] && $@
+##############################################################################
+
+function error() {
+    echo -e "\033[0;31mError: $1\033[0m\n";
 }
 
-usage() {
-    echo "$0 [--option[=<value>]]"
-    echo ""
-    echo "Possible options are:"
-    echo "  --backend=<value>   Compile wtk with the specified backend."
-    echo "                          <value> can be: cocoa"
-    echo "  --no-examples       Only compile the library"
-    echo "  --verbose           Show the commands as they are run"
-    echo "  --touch             Show the commands that will be run, but don't actually execute anything"
-    echo "  --release           Compile with release flags"
-    echo "  --help              Show this message and exit"
+function usage() {
+    echo "Usage: $0 [--option[=<value>]]"
+    echo "    --backend=<value>     Compile with the specified backend. One of: [cocoa]"
+    echo "    --examples            Compile examples"
+    echo "    --release             Compile with release flags"
 }
 
-BACKEND=""
-EXAMPLES=1
-VERBOSE=0
-TOUCH=0
-RELEASE=0
+# Parse args
+for i in "$@"; do case $i in
+    --backend=*)                    eval "${i##*--}";;
+    --examples|--release|--help)    eval "${i##*--}=1";;
+    *)                              error "Unknown option: $i" && usage && exit 1;;
+esac; done
 
-for arg in "$@"; do
-    case "$arg" in
-        --backend=*)        BACKEND="${arg#*=}";;
-        --no-examples)      EXAMPLES=0;;
-        --verbose|--touch)  VERBOSE=1;;
-        --touch)            TOUCH=1;;
-        --release)          RELEASE=1;;
-        --help|*)           usage && [ "$arg" == "--help" ] && exit 0 || exit 1;;
-    esac
-done
+[[ -n "$help" ]] && usage && exit 0
 
-# Try to select a backend if none was specified
+##############################################################################
 
-UNAME=$(uname -s)
-if [ -z $BACKEND ]; then
-    if [ "$UNAME" == "Darwin" ]; then
-        BACKEND="cocoa"
+CFLAGS="-std=c99 -Wall -Iinclude"
+LFLAGS="-Lbin -lwtk"
+
+if [[ -z "$backend" ]]; then
+    UNAME="$(uname -s)"
+    if [[ $UNAME == "Darwin" ]]; then
+        backend="cocoa"
     else
-        echo "ERROR: Unknown platform." && exit 1
+        error "Unsupported platform." && exit 1
     fi
 fi
 
-CFLAGS="-std=c99 -Wall -Iinclude"
-if [ ! $RELEASE ]; then
-    CFLAGS="$CFLAGS -Werror -g3"
-else
-    CFLAGS="$CFLAGS -O2"
-fi
-
-echo -n "INFO: Compiling bin/libwtk.a with the $BACKEND backend... "
-
-cmd mkdir -p bin
-cmd gcc $CFLAGS -c source/$BACKEND.?
-cmd ar crs bin/libwtk.a $BACKEND.o
-cmd rm $BACKEND.o
-
-echo "Done."
-[ $EXAMPLES -eq 0 ] && exit 0
-
-LFLAGS="-Lbin -lwtk"
-if [ $BACKEND == "cocoa" ]; then
+if [[ "$backend" == "cocoa" ]]; then
     LFLAGS="$LFLAGS -framework Cocoa -framework OpenGL"
 fi
 
+if [[ -z "$release" ]]; then
+    CFLAGS="$CFLAGS -Wextra -Werror -g3 -DDEBUG"
+else
+    CFLAGS="$CFLAGS -O3 -DNDEBUG"
+fi
+
+##############################################################################
+
+echo -n "Compiling bin/libwtk.a with the $backend backend... "
+
+mkdir -p bin
+gcc $CFLAGS -c source/$backend.?
+ar crs bin/libwtk.a $backend.o
+rm $backend.o
+
+echo "Done."
+[[ -z "${examples}" ]] && exit 0
+
 for f in examples/*.c; do
     ff=$(basename $f .c)
-    echo -n "INFO: Compiling bin/$ff... "
-    cmd gcc $CFLAGS $f -o bin/$ff $LFLAGS
+    echo -n "Compiling bin/$ff... "
+    cc $CFLAGS $f -o bin/$ff $LFLAGS
     echo "Done."
 done
+
+##############################################################################

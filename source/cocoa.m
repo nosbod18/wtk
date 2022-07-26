@@ -1,5 +1,5 @@
 #define GL_SILENCE_DEPRECATION
-#include "wtk/wtk.h"
+#import "wtk/wtk.h"
 #import <Cocoa/Cocoa.h>
 #import <stdlib.h>
 #import <stdio.h>  // printf
@@ -235,7 +235,7 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
 
     WtkWindow *window = WTK.alloc(sizeof *window);
     if (!window) {
-        WTK.onError("Failed to allocated window\n");
+        WTK.onError("Failed to allocate window\n");
         return NULL;
     }
 
@@ -317,7 +317,7 @@ void wtkGetWindowSize(WtkWindow const *window, int *width, int *height) {
 
     if (window) {
         NSRect frame = [window->view frame];
-        if (width)  *width = frame.size.width;
+        if (width)  *width  = frame.size.width;
         if (height) *height = frame.size.height;
     }
 
@@ -336,7 +336,7 @@ bool wtkGetWindowVisible(WtkWindow const *window) {
 bool wtkGetWindowFullscreen(WtkWindow const *window) {
     @autoreleasepool {
 
-    return window ? [window->window styleMask] & NSWindowStyleMaskFullScreen  : false;
+    return window ? [window->window styleMask] & NSWindowStyleMaskFullScreen : false;
 
     } // autoreleasepool
 }

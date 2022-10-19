@@ -9,11 +9,10 @@ Wtk is a simple platform-independent window and OpenGL context library. It provi
 - Windows (Win32)
 
 ## Building
-### Unix
+### MacOS and Linux
 ```bash
 $ make
 ```
-This will compile the Wtk library and the examples
 
 ### Windows
 Currently cannot build on Windows

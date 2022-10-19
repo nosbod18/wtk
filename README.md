@@ -3,16 +3,17 @@ Wtk is a simple platform-independent window and OpenGL context library. It provi
 
 ## Supported platforms
 - MacOS (Cocoa)
+- Linux (X11)
 
 ## Planned platforms
-- Linux (Xlib, XCB, Wayland)
 - Windows (Win32)
 
 ## Building
 ### Unix
 ```bash
-$ ./build.sh [--option[=<value>]]
+$ make
 ```
+This will compile the Wtk library and the examples
 
 ### Windows
 Currently cannot build on Windows
@@ -22,9 +23,8 @@ Currently cannot build on Windows
 #include "wtk/wtk.h"
 
 int main(void) {
-    wtkInit(&(WtkDesc){0});
-
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
+    wtkMakeCurrent(window);
 
     while (!wtkGetWindowShouldClose(window)) {
         wtkSwapBuffers(window);
@@ -32,7 +32,6 @@ int main(void) {
     }
 
     wtkDeleteWindow(window);
-    wtkQuit();
 }
 ```
 

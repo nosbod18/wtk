@@ -1,6 +1,4 @@
 #pragma once
-#include <stdbool.h>
-#include <stddef.h>
 
 typedef enum WtkWindowFlag {
     WtkWindowFlag_Closable      = 1U << 0,
@@ -11,6 +9,8 @@ typedef enum WtkWindowFlag {
     WtkWindowFlag_Visible       = 1U << 5,
     WtkWindowFlag_Fullscreen    = 1U << 6,
     WtkWindowFlag_Vsync         = 1U << 7,
+
+    WtkWindowFlag_MAX,
 } WtkWindowFlag;
 
 typedef enum WtkEventType {
@@ -26,6 +26,8 @@ typedef enum WtkEventType {
     WtkEventType_MouseUp,
     WtkEventType_KeyDown,
     WtkEventType_KeyUp,
+
+    WtkEventType_MAX,
 } WtkEventType;
 
 typedef enum WtkKey {
@@ -38,6 +40,8 @@ typedef enum WtkKey {
     WtkKey_LeftShift, WtkKey_LeftControl, WtkKey_LeftSuper, WtkKey_LeftAlt,
     WtkKey_RightShift, WtkKey_RightControl, WtkKey_RightSuper, WtkKey_RightAlt,
     WtkKey_CapsLock,
+
+    WtkKey_MAX,
 } WtkKey;
 
 typedef enum WtkButton {
@@ -49,6 +53,8 @@ typedef enum WtkButton {
     WtkButton_6,
     WtkButton_7,
     WtkButton_8,
+
+    WtkButton_MAX,
 } WtkButton;
 
 typedef enum WtkMod {
@@ -56,64 +62,57 @@ typedef enum WtkMod {
     WtkMod_Control      = 1U << 1,
     WtkMod_Alt          = 1U << 2,
     WtkMod_Super        = 1U << 3,
+
+    WtkMod_MAX,
 } WtkMod;
 
 typedef struct WtkWindow WtkWindow;
 
-typedef union WtkEventData {
-    struct { int width, height;             } resize;
-    struct { int keycode, scancode, mods;   } key;
-    struct { int button, mods, x, y;        } button, motion;
-    struct { int dx, dy;                    } scroll;
-} WtkEventData;
+typedef struct WtkEvent {
+    WtkWindow              *window;
+    WtkEventType            type;
+    double                  time;
 
-typedef void WtkEventCallback(WtkWindow *window, WtkEventType type, WtkEventData const *data);
+    struct { int x, y; }    location;
+    struct { int x, y, z; } delta;
+
+    WtkKey                  key;
+    WtkButton               button;
+    int                     sym;
+    unsigned int            mods;
+    int                     isRepeat;
+    int                     clicks;
+} WtkEvent;
+
+typedef void WtkEventCallback(WtkEvent const *event);
 typedef int  WtkErrorCallback(char const *fmt, ...);
 
 typedef struct WtkWindowDesc {      // Defaults:
     struct {
-        struct {
-            int red;                // 8
-            int green;              // 8
-            int blue;               // 8
-            int alpha;              // 8
-            int depth;              // 24
-            int stencil;            // 8
-        } bits;
-        int samples;                // 0
-        int sampleBuffers;          // 0
+        int major;                  // cocoa: 3, x11: 4
+        int minor;                  // cocoa: 2, x11: 6
     } context;
 
-    WtkEventCallback *onEvent;      // defaultOnEvent (Internal to each backend, does nothing)
+    WtkEventCallback *onEvent;      // stub function, does nothing
     char const *title;              // "Untitled"
     int width;                      // 640
     int height;                     // 480
     WtkWindowFlag flags;            // WtkWindowFlag_Closable | WtkWindowFlag_Resizable | WtkWindowFlag_Titled | WtkWindowFlag_Centered | WtkWindowFlag_Visible
 } WtkWindowDesc;
 
-typedef struct WtkDesc {            // Defaults:
-    WtkErrorCallback *onError;      // printf
-    void *(*malloc)(size_t size);   // malloc
-    void  (*free)(void *ptr);       // free
-} WtkDesc;
 
+WtkWindow  *wtkCreateWindow         (WtkWindowDesc *desc);
+void        wtkDeleteWindow         (WtkWindow *window);
 
-bool            wtkInit                 (WtkDesc *desc);
-void            wtkQuit                 (void);
-void            wtkMakeCurrent          (WtkWindow const *window);
-void            wtkSwapBuffers          (WtkWindow const *window);
-void            wtkPollEvents           (void);
+void        wtkMakeCurrent          (WtkWindow const *window);
+void        wtkSwapBuffers          (WtkWindow const *window);
+void        wtkPollEvents           (void);
 
-WtkWindow      *wtkCreateWindow         (WtkWindowDesc *desc);
-void            wtkDeleteWindow         (WtkWindow *window);
+void        wtkGetWindowPos         (WtkWindow const *window, int *x, int *y);
+void        wtkGetWindowSize        (WtkWindow const *window, int *w, int *h);
+int         wtkGetWindowShouldClose (WtkWindow const *window);
 
-void            wtkGetWindowPos         (WtkWindow const *window, int *x, int *y);
-void            wtkGetWindowSize        (WtkWindow const *window, int *width, int *height);
-WtkWindowFlag   wtkGetWindowFlags       (WtkWindow const *window, WtkWindowFlag flag);
-bool            wtkGetWindowShouldClose (WtkWindow const *window);
-
-void            wtkSetWindowPos         (WtkWindow *window, int x, int y);
-void            wtkSetWindowSize        (WtkWindow *window, int width, int height);
-void            wtkSetWindowFlag        (WtkWindow *window, WtkWindowFlag flag, bool set);
-void            wtkSetWindowTitle       (WtkWindow *window, char const *title);
-void            wtkSetWindowShouldClose (WtkWindow *window, bool shouldClose);
+void        wtkSetWindowPos         (WtkWindow *window, int x, int y);
+void        wtkSetWindowSize        (WtkWindow *window, int w, int h);
+void        wtkSetWindowTitle       (WtkWindow *window, char const *title);
+void        wtkSetWindowShouldClose (WtkWindow *window, int shouldClose);

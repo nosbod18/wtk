@@ -15,7 +15,7 @@ $ ./build.sh [--option[=<value>]]
 ```
 
 ### Windows
-**TODO**
+Currently cannot build on Windows
 
 ## Example
 ```c

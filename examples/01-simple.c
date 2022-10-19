@@ -1,9 +1,8 @@
 #include "wtk/wtk.h"
 
 int main(void) {
-    wtkInit(&(WtkDesc){0});
-
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
+    wtkMakeCurrent(window);
 
     while (!wtkGetWindowShouldClose(window)) {
         wtkSwapBuffers(window);
@@ -11,6 +10,5 @@ int main(void) {
     }
 
     wtkDeleteWindow(window);
-    wtkQuit();
 }
 

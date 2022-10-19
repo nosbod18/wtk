@@ -31,10 +31,7 @@ static char const *fsSource =
     "}";
 
 int main(void) {
-    wtkInit(&(WtkDesc){0});
-
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
-
     wtkMakeCurrent(window);
     gladLoaderLoadGL();
 

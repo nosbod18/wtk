@@ -1,37 +1,12 @@
 #define GL_SILENCE_DEPRECATION
 #import "wtk/wtk.h"
+#import "plugins/glad.glx"
 #import <Cocoa/Cocoa.h>
 #import <stdlib.h>
 #import <stdio.h>  // printf
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
-@end
-
-@interface ContentView : NSOpenGLView <NSWindowDelegate> {
-    WtkWindow *m_window;
-}
-@end
-
-struct WtkWindow {
-    NSWindow *window;
-    ContentView *view;
-    WtkEventCallback *onEvent;
-    bool shouldClose;
-};
-
-static struct {
-    AppDelegate *appDelegate;
-    WtkErrorCallback *onError;
-    void *(*malloc)(size_t size);
-    void (*free)(void *ptr);
-} WTK;
-
 static float translateYCoordinate(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
-}
-
-static void defaultEventCallback(WtkWindow *window, WtkEventType type, WtkEventData const *data) {
-    (void)window; (void)type; (void)data;
 }
 
 static int translateKeyCode(int keyCode) {

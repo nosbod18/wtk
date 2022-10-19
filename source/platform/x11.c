@@ -95,7 +95,7 @@ static void platformStop(void) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // External platform functions ////////////////////////////////////////////////////////////////////////////////////////
 
-int platformCreateWindow(WtkWindow *window, WtkWindowDesc const *desc) {
+int platformCreateWindow(WtkWindow *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
         .colormap = WTK.x11.colormap
@@ -103,7 +103,7 @@ int platformCreateWindow(WtkWindow *window, WtkWindowDesc const *desc) {
 
     window->x11.window = XCreateWindow(
         WTK.x11.display, WTK.x11.root,
-        0, 0, desc->width, desc->height,
+        0, 0, window->w, window->h,
         0, WTK.x11.depth, InputOutput,
         WTK.x11.visual, CWColormap | CWEventMask, &swa
     );

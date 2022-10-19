@@ -26,7 +26,6 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     if (!desc->title)           desc->title         = "";
     if (!desc->width)           desc->width         = 640;
     if (!desc->height)          desc->height        = 480;
-    if (!desc->flags)           desc->flags         = WtkWindowFlag_Closable | WtkWindowFlag_Resizable | WtkWindowFlag_Titled | WtkWindowFlag_Centered;
 
     WtkWindow *window = malloc(sizeof *window);
     if (!window) {
@@ -35,9 +34,10 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     }
 
     window->onEvent = desc->onEvent;
-    window->title   = desc->title;
-    window->w       = desc->width;
-    window->h       = desc->height;
+    window->title = desc->title;
+    window->w = desc->width;
+    window->h = desc->height;
+    window->shouldClose = 0;
 
     if (WTK.windowCount == 0) {
         if (!platformStart()) {
@@ -47,7 +47,7 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
         }
     }
 
-    if (!platformCreateWindow(window, desc) || !platformCreateContext(window, desc)) {
+    if (!platformCreateWindow(window) || !platformCreateContext(window, desc)) {
         wtkDeleteWindow(window);
         return NULL;
     }

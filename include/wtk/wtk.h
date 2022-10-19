@@ -1,16 +1,5 @@
 #pragma once
 
-typedef enum WtkWindowFlag {
-    WtkWindowFlag_Closable      = 1U << 0,
-    WtkWindowFlag_Resizable     = 1U << 2,
-    WtkWindowFlag_Centered      = 1U << 3,
-    WtkWindowFlag_Titled        = 1U << 4,
-
-    WtkWindowFlag_Visible       = 1U << 5,
-    WtkWindowFlag_Fullscreen    = 1U << 6,
-    WtkWindowFlag_Vsync         = 1U << 7,
-} WtkWindowFlag;
-
 typedef enum WtkEventType {
     WtkEventType_WindowFocusOut,
     WtkEventType_WindowFocusIn,
@@ -87,7 +76,6 @@ typedef struct WtkWindowDesc {      // Defaults:
     char const *title;              // "Untitled"
     int width;                      // 640
     int height;                     // 480
-    WtkWindowFlag flags;            // WtkWindowFlag_Closable | WtkWindowFlag_Resizable | WtkWindowFlag_Titled | WtkWindowFlag_Centered | WtkWindowFlag_Visible
 } WtkWindowDesc;
 
 

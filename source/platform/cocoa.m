@@ -1,9 +1,13 @@
 #define GL_SILENCE_DEPRECATION
 #import "wtk/wtk.h"
-#import "plugins/glad.glx"
+#import "platform.h"
+
+#import "plugins/log/log.h"
+
 #import <Cocoa/Cocoa.h>
-#import <stdlib.h>
-#import <stdio.h>  // printf
+
+///////////////////////////////////////////////////////////////////////////////
+// Helper functions ///////////////////////////////////////////////////////////
 
 static float translateYCoordinate(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
@@ -17,54 +21,70 @@ static int translateModifiers(int mods) {
     return mods; // TODO
 }
 
-static void postKeyEvent(WtkWindow *window, NSEvent const *event, bool pressed) {
+static void postKeyEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
     @autoreleasepool {
 
-    window->onEvent(window, pressed ? WtkEventType_KeyDown : WtkEventType_KeyUp, &(WtkEventData){
-        .key.keycode = translateKeyCode([event keyCode]),
-        .key.scancode = [event keyCode],
-        .key.mods = translateModifiers([event modifierFlags])
+    window->onEvent(&(WtkEvent){
+        .window = window,
+        .type = type,
+        .time = [event timestamp],
+        .location = {
+            .x = [event locationInWindow].x,
+            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+        },
+        .key = translateKeyCode([event keyCode]),
+        .sym = [event keyCode],
+        .mods = translateModifiers([event modifierFlags]),
+        .isRepeat = [event isARepeat],
     });
 
     } // autoreleasepool
 }
 
-static void postMouseEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
-    @autoreleasepool {
-
-    window->onEvent(window, type, &(WtkEventData){
-        .motion.button = [event buttonNumber],
-        .motion.mods = [event modifierFlags],
-        .motion.x = [event locationInWindow].x,
-        .motion.y = [window->view frame].size.height - [event locationInWindow].y
+static void postButtonEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
+    window->onEvent(&(WtkEvent){
+        .window = window,
+        .type = type,
+        .time = [event timestamp],
+        .location = {
+            .x = [event locationInWindow].x,
+            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+        },
+        .button = [event buttonNumber],
+        .sym = [event buttonNumber],
+        .mods = translateModifiers([event modifierFlags]),
+        .isRepeat = [event isARepeat],
+        .clicks = [event clickCount],
     });
-
-    } // autoreleasepool
 }
 
-static bool validateWtkDesc(WtkDesc *desc) {
-    if (!desc)
-        return false;
-
-    if (!desc->onError) desc->onError = printf;
-    if (!desc->malloc)  desc->malloc  = malloc;
-    if (!desc->free)    desc->free    = free;
-
-    return true;
+static void postMotionOrScrollEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
+    window->onEvent(&(WtkEvent){
+        .window = window,
+        .type = type,
+        .time = [event timestamp],
+        .location = {
+            .x = [event locationInWindow].x,
+            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+        },
+        .mods = translateModifiers([event modifierFlags]),
+        .delta = {
+            .x = [event deltaX],
+            .y = [event deltaY],
+            .z = [event deltaZ],
+        }
+    });
 }
 
-static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
-    if (!desc)
-        return false;
-
-    if (!desc->onEvent) desc->onEvent   = defaultEventCallback;
-    if (!desc->title)   desc->title     = "Untitled";
-    if (!desc->width)   desc->width     = 640;
-    if (!desc->height)  desc->height    = 480;
-    if (!desc->flags)   desc->flags     = WtkWindowFlag_Closable | WtkWindowFlag_Resizable | WtkWindowFlag_Titled | WtkWindowFlag_Centered;
-
-    return true;
+static void postOtherEvent(WtkWindow *window, WtkEventType type) {
+    window->onEvent(&(WtkEvent){
+        .window = window,
+        .type = type
+    });
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Class functions ////////////////////////////////////////////////////////////
 
 @implementation AppDelegate
 -(void)applicationWillFinishLaunching:(NSNotification *)notification {
@@ -113,118 +133,202 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
 }
 
 -(void)windowDidBecomeKey:(NSNotification *)notification {
-    m_window->onEvent(m_window, WtkEventType_WindowFocusIn, &(WtkEventData){0});
+    postOtherEvent(m_window, WtkEventType_WindowFocusIn);
 }
 
 -(void)windowDidResignKey:(NSNotification *)notification {
-    m_window->onEvent(m_window, WtkEventType_WindowFocusOut, &(WtkEventData){0});
+    postOtherEvent(m_window, WtkEventType_WindowFocusOut);
 }
 
 -(void)windowDidResize:(NSNotification *)notification {
-    NSRect frame = [m_window->view frame];
-    m_window->onEvent(m_window, WtkEventType_WindowResize, &(WtkEventData){
-        .resize.width = frame.size.width,
-        .resize.height = frame.size.height,
-    });
+    postOtherEvent(m_window, WtkEventType_WindowResize);
 }
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
+    // wtkSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
     wtkSetWindowShouldClose(m_window, true);
-    m_window->onEvent(m_window, WtkEventType_WindowClose, &(WtkEventData){0});
+    postOtherEvent(m_window, WtkEventType_WindowClose);
     return NO;
 }
 
 -(void)mouseDown:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WtkEventType_MouseDown, event);
 }
 
 -(void)mouseUp:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WtkEventType_MouseUp, event);
 }
 
 -(void)mouseDragged:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
 }
 
 -(void)scrollWheel:(NSEvent *)event {
-    m_window->onEvent(m_window, WtkEventType_MouseScroll, &(WtkEventData){
-        .scroll.dx = [event scrollingDeltaX],
-        .scroll.dy = [event scrollingDeltaY]
-    });
+    postMotionOrScrollEvent(m_window, WtkEventType_MouseScroll, event);
 }
 
 -(void)rightMouseDown:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WtkEventType_MouseDown, event);
 }
 
 -(void)rightMouseUp:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WtkEventType_MouseUp, event);
 }
 
 -(void)rightMouseDragged:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
 }
 
 -(void)otherMouseDown:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WtkEventType_MouseDown, event);
 }
 
 -(void)otherMouseUp:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WtkEventType_MouseUp, event);
 }
 
 -(void)otherMouseDragged:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
 }
 
 -(void)mouseMoved:(NSEvent *)event {
-    postMouseEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
 }
 
 -(void)keyDown:(NSEvent *)event {
-    postKeyEvent(m_window, event, true);
+    postKeyEvent(m_window, WtkEventType_KeyDown, event);
 }
 
 -(void)keyUp:(NSEvent *)event {
-    postKeyEvent(m_window, event, false);
+    postKeyEvent(m_window, WtkEventType_KeyUp, event);
 }
 
 @end
 
-bool wtkInit(WtkDesc *desc) {
-    if (!validateWtkDesc(desc))
-        return false;
+///////////////////////////////////////////////////////////////////////////////
+// Internal platform functions ////////////////////////////////////////////////
 
-    WTK.onError = desc->onError;
-    WTK.malloc = desc->malloc;
-    WTK.free = desc->free;
+static int platformStart(void) {
+    @autoreleasepool {
 
     [NSApplication sharedApplication];
-    WTK.appDelegate = [[AppDelegate alloc] init];
-    [NSApp setDelegate:WTK.appDelegate];
+
+    WTK.cocoa.appDelegate = [[AppDelegate alloc] init];
+    if (!WTK.cocoa.appDelegate) {
+        error("Failed to initialize AppDelegate");
+        return 0;
+    }
+
+    [NSApp setDelegate:WTK.cocoa.appDelegate];
     [NSApp finishLaunching];
 
-    return true;
+    return 1;
+
+    } // autoreleasepool
 }
 
-void wtkQuit(void) {
+static void platformStop(void) {
+    @autoreleasepool {
+
     [NSApp terminate:nil];
-    [WTK.appDelegate release];
+    [WTK.cocoa.appDelegate release];
+
+    } // autoreleasepool
 }
 
-void wtkMakeCurrent(WtkWindow const *window) {
-    if (window && window->view)
-        [[window->view openGLContext] makeCurrentContext];
+///////////////////////////////////////////////////////////////////////////////
+// External platform functions ////////////////////////////////////////////////
+
+int platformCreateWindow(WtkWindow *window) {
+    @autoreleasepool {
+
+    window->cocoa.window = [[NSWindow alloc]
+                                initWithContentRect:NSMakeRect(0, 0, window->w, window->h)
+                                          styleMask:NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
+                                            backing:NSBackingStoreBuffered
+                                              defer:NO];
+    if (!window->cocoa.window) {
+        error("Failed to create NSWindow");
+        return 0;
+    }
+
+    [window->cocoa.window setAcceptsMouseMovedEvents:YES];
+    [window->cocoa.window setRestorable:NO];
+    [window->cocoa.window center];
+    [window->cocoa.window makeKeyAndOrderFront:nil];
+    [window->cocoa.window orderFront:nil];
+
+    return 1;
+
+    } // autoreleasepool
+}
+
+void platformDeleteWindow(WtkWindow *window) {
+    @autoreleasepool {
+
+    if (!window->cocoa.window)
+        return;
+
+    [window->cocoa.window close];
+    window->cocoa.window = nil;
+
+    } // autoreleasepool
+}
+
+int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
+    @autoreleasepool {
+    (void)desc; // TODO
+
+    window->cocoa.view = [[ContentView alloc] initWithFrame:NSMakeRect(0, 0, window->w, window->h) window:window];
+    if (!window->cocoa.view) {
+        error("Failed to create ContentView");
+        return 0;
+    }
+
+    [window->cocoa.window setContentView:window->cocoa.view];
+    [window->cocoa.window setDelegate:window->cocoa.view];
+    [window->cocoa.window makeFirstResponder:window->cocoa.view];
+
+    return 1;
+
+    } // autoreleasepool
+}
+
+void platformDeleteContext(WtkWindow *window) {
+    @autoreleasepool {
+
+    if (!window->cocoa.view)
+        return;
+
+    if (window->cocoa.window)
+        [window->cocoa.window setDelegate:nil];
+
+    [window->cocoa.view release];
+    window->cocoa.view = nil;
+
+    } // autoreleasepool
+}
+
+void platformMakeCurrent(WtkWindow const *window) {
+    @autoreleasepool {
+
+    if (window)
+        [[window->cocoa.view openGLContext] makeCurrentContext];
     else
         [NSOpenGLContext clearCurrentContext];
+
+    } // autoreleasepool
 }
 
-void wtkSwapBuffers(WtkWindow const *window) {
-    if (window && window->view)
-        [[window->view openGLContext] flushBuffer];
+void platformSwapBuffers(WtkWindow const *window) {
+    @autoreleasepool {
+
+    [[window->cocoa.view openGLContext] flushBuffer];
+
+    } // autoreleasepool
 }
 
-void wtkPollEvents(void) {
+void platformPollEvents(void) {
     @autoreleasepool {
 
     while (true) {
@@ -238,187 +342,31 @@ void wtkPollEvents(void) {
     } // autoreleasepool
 }
 
-WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
+void platformSetWindowPos(WtkWindow *window, int x, int y) {
     @autoreleasepool {
 
-    if (!validateWtkWindowDesc(desc))
-        return false;
-
-    unsigned styleMask = NSWindowStyleMaskMiniaturizable;
-    if (desc->flags & WtkWindowFlag_Titled)     styleMask |= NSWindowStyleMaskTitled;
-    if (desc->flags & WtkWindowFlag_Closable)   styleMask |= NSWindowStyleMaskClosable;
-    if (desc->flags & WtkWindowFlag_Resizable)  styleMask |= NSWindowStyleMaskResizable;
-
-    NSRect frame = NSMakeRect(0, 0, desc->width, desc->height);
-
-    WtkWindow *window = WTK.malloc(sizeof *window);
-    if (!window) {
-        WTK.onError("Failed to allocate window\n");
-        return NULL;
-    }
-
-    window->window = [[NSWindow alloc] initWithContentRect:frame styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-    if (!window->window) {
-        WTK.onError("Failed to create NSWindow\n");
-        wtkDeleteWindow(window);
-        return NULL;
-    }
-
-    window->view = [[ContentView alloc] initWithFrame:frame window:window];
-    if (!window->view) {
-        WTK.onError("Failed to create ContentView\n");
-        wtkDeleteWindow(window);
-        return NULL;
-    }
-
-    window->onEvent = desc->onEvent;
-    window->shouldClose = false;
-
-    [window->window setContentView:window->view];
-    [window->window setDelegate:window->view];
-    [window->window setAcceptsMouseMovedEvents:YES];
-    [window->window setTitle:@(desc->title)];
-    [window->window setRestorable:NO];
-
-    [window->window center];
-    [window->window makeFirstResponder:window->view];
-    [window->window makeKeyAndOrderFront:nil];
-    [window->window orderFront:nil];
-
-    return window;
+    NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [window->cocoa.view frame].size.height - 1), 0, 0);
+    NSRect frame = [window->cocoa.window frameRectForContentRect:rect];
+    [window->cocoa.window setFrameOrigin:frame.origin];
 
     } // autoreleasepool
 }
 
-void wtkDeleteWindow(WtkWindow *window) {
+void platformSetWindowSize(WtkWindow *window, int w, int h) {
     @autoreleasepool {
 
-    if (!window)
-        return;
-
-    if (window->window) {
-        if (window->view) {
-            [window->window setDelegate:nil];
-            [window->view release];
-            window->view = nil;
-        }
-
-        [window->window close];
-        window->window = nil;
-    }
-
-    WTK.free(window);
+    NSRect contentRect = [window->cocoa.window contentRectForFrameRect:[window->cocoa.window frame]];
+    contentRect.origin.y += contentRect.size.height - h;
+    contentRect.size = NSMakeSize(w, h);
+    [window->cocoa.window setFrame:[window->cocoa.window frameRectForContentRect:contentRect] display:YES];
 
     } // autoreleasepool
 }
 
-void wtkGetWindowPos(WtkWindow const *window, int *x, int *y) {
+void platformSetWindowTitle(WtkWindow *window, char const *title) {
     @autoreleasepool {
 
-    if (x) *x = 0;
-    if (y) *y = 0;
-
-    if (window) {
-        NSRect frame = [window->view frame];
-        if (x) *x = frame.origin.x;
-        if (y) *y = frame.origin.y;
-    }
-
-    } // autoreleasepool
-}
-
-void wtkGetWindowSize(WtkWindow const *window, int *width, int *height) {
-    @autoreleasepool {
-
-    if (width)  *width = 0;
-    if (height) *height = 0;
-
-    if (window) {
-        NSRect frame = [window->view frame];
-        if (width)  *width  = frame.size.width;
-        if (height) *height = frame.size.height;
-    }
-
-    } // autoreleasepool
-}
-
-bool wtkGetWindowVisible(WtkWindow const *window) {
-    @autoreleasepool {
-
-    (void)window;
-    return true; // TODO
-
-    } // autorelease
-}
-
-bool wtkGetWindowFullscreen(WtkWindow const *window) {
-    @autoreleasepool {
-
-    return window ? [window->window styleMask] & NSWindowStyleMaskFullScreen : false;
-
-    } // autoreleasepool
-}
-
-bool wtkGetWindowShouldClose(WtkWindow const *window) {
-    return window ? window->shouldClose : true;
-}
-
-void wtkSetWindowPos(WtkWindow *window, int x, int y) {
-    @autoreleasepool {
-
-    NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [window->view frame].size.height - 1), 0, 0);
-    NSRect frame = [window->window frameRectForContentRect:rect];
-    [window->window setFrameOrigin:frame.origin];
-
-    } // autoreleasepool
-}
-
-void wtkSetWindowSize(WtkWindow *window, int width, int height) {
-    @autoreleasepool {
-
-    if (!window)
-        return;
-
-    NSRect contentRect = [window->window contentRectForFrameRect:[window->window frame]];
-    contentRect.origin.y += contentRect.size.height - height;
-    contentRect.size = NSMakeSize(width, height);
-    [window->window setFrame:[window->window frameRectForContentRect:contentRect] display:YES];
-
-    } // autoreleasepool
-}
-
-void wtkSetWindowTitle(WtkWindow *window, char const *title) {
-    @autoreleasepool {
-
-    if (window && title)
-        [window->window setTitle:@(title)];
-
-    } // autoreleasepool
-}
-
-void wtkSetWindowFullscreen(WtkWindow *window, bool fullscreen) {
-    @autoreleasepool {
-
-    (void)window; (void)fullscreen;
-    // TODO
-
-    } // autoreleasepool
-}
-
-void wtkSetWindowVisibile(WtkWindow *window, bool visible) {
-    @autoreleasepool {
-
-    (void)window; (void)visible;
-    // TODO
-
-    } // autoreleasepool
-}
-
-void wtkSetWindowShouldClose(WtkWindow *window, bool shouldClose) {
-    @autoreleasepool {
-
-    if (window)
-        window->shouldClose = shouldClose;
+    [window->cocoa.window setTitle:@(title)];
 
     } // autoreleasepool
 }

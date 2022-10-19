@@ -62,8 +62,6 @@ int main(void) {
     glAttachShader(program, fs);
     glLinkProgram(program);
 
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
     while (!wtkGetWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -83,5 +81,4 @@ int main(void) {
 
     gladLoaderUnloadGL();
     wtkDeleteWindow(window);
-    wtkQuit();
 }

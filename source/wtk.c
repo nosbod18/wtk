@@ -1,9 +1,9 @@
 #include "wtk/wtk.h"
 #include "platform/platform.h"
 
-#if defined(__APPLE__)
+#if defined(WTK_USE_COCOA)
     #include "platform/cocoa.m"
-#elif defined(__linux__)
+#elif defined(WTK_USE_X11)
     #include "platform/x11.c"
 #endif
 

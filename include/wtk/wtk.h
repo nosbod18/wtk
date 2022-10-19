@@ -9,8 +9,6 @@ typedef enum WtkWindowFlag {
     WtkWindowFlag_Visible       = 1U << 5,
     WtkWindowFlag_Fullscreen    = 1U << 6,
     WtkWindowFlag_Vsync         = 1U << 7,
-
-    WtkWindowFlag_MAX,
 } WtkWindowFlag;
 
 typedef enum WtkEventType {
@@ -26,8 +24,6 @@ typedef enum WtkEventType {
     WtkEventType_MouseUp,
     WtkEventType_KeyDown,
     WtkEventType_KeyUp,
-
-    WtkEventType_MAX,
 } WtkEventType;
 
 typedef enum WtkKey {
@@ -40,8 +36,6 @@ typedef enum WtkKey {
     WtkKey_LeftShift, WtkKey_LeftControl, WtkKey_LeftSuper, WtkKey_LeftAlt,
     WtkKey_RightShift, WtkKey_RightControl, WtkKey_RightSuper, WtkKey_RightAlt,
     WtkKey_CapsLock,
-
-    WtkKey_MAX,
 } WtkKey;
 
 typedef enum WtkButton {
@@ -53,8 +47,6 @@ typedef enum WtkButton {
     WtkButton_6,
     WtkButton_7,
     WtkButton_8,
-
-    WtkButton_MAX,
 } WtkButton;
 
 typedef enum WtkMod {
@@ -62,8 +54,6 @@ typedef enum WtkMod {
     WtkMod_Control      = 1U << 1,
     WtkMod_Alt          = 1U << 2,
     WtkMod_Super        = 1U << 3,
-
-    WtkMod_MAX,
 } WtkMod;
 
 typedef struct WtkWindow WtkWindow;

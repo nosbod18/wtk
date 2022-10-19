@@ -74,7 +74,7 @@ static int platformStart(void) {
     WTK.x11.depth = DefaultDepth(WTK.x11.display, WTK.x11.screen);
 
     if (!(WTK.x11.wmDeleteWindow = XInternAtom(WTK.x11.display, "WM_DELETE_WINDOW", False))) {
-        error("Failed to intern the WM_DELETE_WINDOW atom");
+        error("Failed to intern WM_DELETE_WINDOW atom");
         return 0;
     }
 
@@ -97,7 +97,7 @@ static void platformStop(void) {
 
 int platformCreateWindow(WtkWindow *window, WtkWindowDesc const *desc) {
     XSetWindowAttributes swa = {
-        .event_mask = ExposureMask | KeyPressMask | KeyReleaseMask,
+        .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
         .colormap = WTK.x11.colormap
     };
 
@@ -134,16 +134,16 @@ void platformDeleteWindow(WtkWindow *window) {
 }
 
 int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
-    GLint visual_attributes[] = {
-        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+    GLint visualAttribs[] = {
+        GLX_RENDER_TYPE,  GLX_RGBA_BIT,
         GLX_DOUBLEBUFFER, 1,
         None
     };
 
     int fbcount = 0;
-    GLXFBConfig *fbc = glXChooseFBConfig(WTK.x11.display, WTK.x11.screen, visual_attributes, &fbcount);
+    GLXFBConfig *fbc = glXChooseFBConfig(WTK.x11.display, WTK.x11.screen, visualAttribs, &fbcount);
 
-    if (!fbc || fbcount == 0) {
+    if (!fbc || !fbcount) {
         error("Failed to find suitable a framebuffer config");
         return 0;
     }

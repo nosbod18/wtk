@@ -1,7 +1,7 @@
 #pragma once
 #include "wtk/wtk.h"
 
-#if defined(__APPLE__)
+#if defined(WTK_USE_COCOA)
 
     #include <Cocoa/Cocoa.h>
 
@@ -22,12 +22,10 @@
         AppDelegate    *appDelegate;
     } CocoaPlatform;
 
-#elif defined(__linux__)
+#elif defined(WTK_USE_X11)
 
     #include <X11/Xlib.h>
     #include "plugins/glad/glx.h"
-
-    typedef GLXContext GlXCreateContextAttribsARB(Display *, GLXFBConfig, GLXContext, Bool, int const *);
 
     typedef struct X11Window {
         Window          window;
@@ -49,9 +47,9 @@
 typedef struct Wtk {
     int                 windowCount;
 
-#if defined(__APPLE__)
+#if defined(WTK_USE_COCOA)
     CocoaPlatform       cocoa;
-#elif defined(__linux__)
+#elif defined(WTK_USE_X11)
     X11Platform         x11;
 #endif
 } Wtk;
@@ -62,9 +60,9 @@ struct WtkWindow {
     int                 x, y, w, h;
     int                 shouldClose;
 
-#if defined(__APPLE__)
+#if defined(WTK_USE_COCOA)
     CocoaWindow         cocoa;
-#elif defined(__linux__)
+#elif defined(WTK_USE_X11)
     X11Window           x11;
 #endif
 };

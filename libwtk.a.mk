@@ -1,12 +1,15 @@
 sources  := source/wtk.c
-includes := source
+includes := source source/plugins/log
 INCLUDES := include
 cflags   := -std=c99 -Wall
 
 ifeq ($(OS),Darwin)
-	cflags  += -DWTK_USE_COCOA -x objective-c -Wno-deprecated-declarations
+	sources += source/platform/cocoa.m
+	cflags  += -DWTK_USE_COCOA -Wno-deprecated-declarations
+	CFLAGS  := -Wno-incompatible-function-pointer-types
 	LDFLAGS := -framework Cocoa -framework OpenGL
 else ifeq ($(OS),Linux)
+	sources += source/platform/x11.c
 	cflags  += -DWTK_USE_X11
 	LDFLAGS := -lX11 -lGL
 else

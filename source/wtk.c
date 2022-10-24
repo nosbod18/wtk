@@ -1,5 +1,6 @@
 #include "wtk/wtk.h"
 #include "platform/platform.h"
+#include "plugins/log/log.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -9,9 +10,9 @@ static void defaultEventCallback(WtkEvent const *event) {
     (void)event;
 }
 
-WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
+static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     if (!desc)
-        return NULL;
+        return false;
 
     if (!desc->context.major)   desc->context.major = 4;
     if (!desc->context.minor)   desc->context.minor = 5;
@@ -19,6 +20,21 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     if (!desc->title)           desc->title         = "";
     if (!desc->width)           desc->width         = 640;
     if (!desc->height)          desc->height        = 480;
+
+    return true;
+}
+
+WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
+    if (!validateWtkWindowDesc(desc))
+        return NULL;
+
+    if (WTK.windowCount == 0) {
+        if (!platformStart()) {
+            error("Failed to start the platform layer");
+            platformStop();
+            return NULL;
+        }
+    }
 
     WtkWindow *window = malloc(sizeof *window);
     if (!window) {
@@ -31,14 +47,6 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     window->w = desc->width;
     window->h = desc->height;
     window->shouldClose = 0;
-
-    if (WTK.windowCount == 0) {
-        if (!platformStart()) {
-            error("Failed to start the platform layer");
-            platformStop();
-            return NULL;
-        }
-    }
 
     if (!platformCreateWindow(window) || !platformCreateContext(window, desc)) {
         wtkDeleteWindow(window);
@@ -152,4 +160,13 @@ void wtkSetWindowShouldClose(WtkWindow *window, int shouldClose) {
     }
 
     window->shouldClose = shouldClose;
+}
+
+WtkGLLoadFunc *wtkGetProcAddress(char const *name) {
+    if (!name) {
+        error("Name cannot be NULL");
+        return NULL;
+    }
+
+    return platformGetProcAddress(name);
 }

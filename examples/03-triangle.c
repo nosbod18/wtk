@@ -33,7 +33,7 @@ static char const *fsSource =
 int main(void) {
     WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
     wtkMakeCurrent(window);
-    gladLoaderLoadGL();
+    gladLoadGL(wtkGetProcAddress);
 
     unsigned vao;
     glGenVertexArrays(1, &vao);
@@ -79,6 +79,5 @@ int main(void) {
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
 
-    gladLoaderUnloadGL();
     wtkDeleteWindow(window);
 }

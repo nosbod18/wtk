@@ -78,19 +78,23 @@ typedef struct WtkWindowDesc {      // Defaults:
     int height;                     // 480
 } WtkWindowDesc;
 
+typedef void WtkGLProc(void);
+typedef WtkGLProc *WtkGLLoadFunc(char const *name);
 
-WtkWindow  *wtkCreateWindow         (WtkWindowDesc *desc);
-void        wtkDeleteWindow         (WtkWindow *window);
+WtkWindow      *wtkCreateWindow         (WtkWindowDesc *desc);
+void            wtkDeleteWindow         (WtkWindow *window);
 
-void        wtkMakeCurrent          (WtkWindow const *window);
-void        wtkSwapBuffers          (WtkWindow const *window);
-void        wtkPollEvents           (void);
+void            wtkMakeCurrent          (WtkWindow const *window);
+void            wtkSwapBuffers          (WtkWindow const *window);
+void            wtkPollEvents           (void);
 
-void        wtkGetWindowPos         (WtkWindow const *window, int *x, int *y);
-void        wtkGetWindowSize        (WtkWindow const *window, int *w, int *h);
-int         wtkGetWindowShouldClose (WtkWindow const *window);
+void            wtkGetWindowPos         (WtkWindow const *window, int *x, int *y);
+void            wtkGetWindowSize        (WtkWindow const *window, int *w, int *h);
+int             wtkGetWindowShouldClose (WtkWindow const *window);
 
-void        wtkSetWindowPos         (WtkWindow *window, int x, int y);
-void        wtkSetWindowSize        (WtkWindow *window, int w, int h);
-void        wtkSetWindowTitle       (WtkWindow *window, char const *title);
-void        wtkSetWindowShouldClose (WtkWindow *window, int shouldClose);
+void            wtkSetWindowPos         (WtkWindow *window, int x, int y);
+void            wtkSetWindowSize        (WtkWindow *window, int w, int h);
+void            wtkSetWindowTitle       (WtkWindow *window, char const *title);
+void            wtkSetWindowShouldClose (WtkWindow *window, int shouldClose);
+
+WtkGLLoadFunc  *wtkGetProcAddress       (char const *name);

@@ -207,7 +207,7 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type) {
 @end
 
 ///////////////////////////////////////////////////////////////////////////////
-// Internal platform functions ////////////////////////////////////////////////
+// Platform functions /////////////////////////////////////////////////////////
 
 bool platformStart(void) {
     @autoreleasepool {
@@ -217,13 +217,19 @@ bool platformStart(void) {
     WTK.cocoa.appDelegate = [[AppDelegate alloc] init];
     if (!WTK.cocoa.appDelegate) {
         error("Failed to initialize AppDelegate");
-        return 0;
+        return false;
     }
 
     [NSApp setDelegate:WTK.cocoa.appDelegate];
     [NSApp finishLaunching];
 
-    return 1;
+    WTK.cocoa.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
+    if (!WTK.cocoa.bundle) {
+        error("Failed to locate OpenGL framework");
+        return false;
+    }
+
+    return true;
 
     } // autoreleasepool
 }
@@ -237,9 +243,6 @@ void platformStop(void) {
     } // autoreleasepool
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// External platform functions ////////////////////////////////////////////////
-
 bool platformCreateWindow(WtkWindow *window) {
     @autoreleasepool {
 
@@ -250,7 +253,7 @@ bool platformCreateWindow(WtkWindow *window) {
                                               defer:NO];
     if (!window->cocoa.window) {
         error("Failed to create NSWindow");
-        return 0;
+        return false;
     }
 
     [window->cocoa.window setAcceptsMouseMovedEvents:YES];
@@ -259,7 +262,7 @@ bool platformCreateWindow(WtkWindow *window) {
     [window->cocoa.window makeKeyAndOrderFront:nil];
     [window->cocoa.window orderFront:nil];
 
-    return 1;
+    return true;
 
     } // autoreleasepool
 }
@@ -283,14 +286,14 @@ bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     window->cocoa.view = [[ContentView alloc] initWithFrame:NSMakeRect(0, 0, window->w, window->h) window:window];
     if (!window->cocoa.view) {
         error("Failed to create ContentView");
-        return 0;
+        return false;
     }
 
     [window->cocoa.window setContentView:window->cocoa.view];
     [window->cocoa.window setDelegate:window->cocoa.view];
     [window->cocoa.window makeFirstResponder:window->cocoa.view];
 
-    return 1;
+    return true;
 
     } // autoreleasepool
 }
@@ -370,6 +373,13 @@ void platformSetWindowTitle(WtkWindow *window, char const *title) {
     [window->cocoa.window setTitle:@(title)];
 
     } // autoreleasepool
+}
+
+WtkGLLoadFunc *platformGetProcAddress(char const *name) {
+    CFStringRef symbolName = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
+    WtkGLLoadFunc *symbol = CFBundleGetFunctionPointerForName(WTK.cocoa.bundle, symbolName);
+    CFRelease(symbolName);
+    return symbol;
 }
 
 #endif // WTK_USE_COCOA

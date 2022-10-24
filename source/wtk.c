@@ -1,12 +1,5 @@
 #include "wtk/wtk.h"
 #include "platform/platform.h"
-
-#if defined(WTK_USE_COCOA)
-    #include "platform/cocoa.m"
-#elif defined(WTK_USE_X11)
-    #include "platform/x11.c"
-#endif
-
 #include <stdbool.h>
 #include <stdlib.h>
 

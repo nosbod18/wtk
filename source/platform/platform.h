@@ -1,5 +1,6 @@
 #pragma once
 #include "wtk/wtk.h"
+#include <stdbool.h>
 
 #if defined(WTK_USE_COCOA)
 
@@ -58,7 +59,7 @@ struct WtkWindow {
     WtkEventCallback   *onEvent;
     char const         *title;
     int                 x, y, w, h;
-    int                 shouldClose;
+    bool                shouldClose;
 
 #if defined(WTK_USE_COCOA)
     CocoaWindow         cocoa;
@@ -68,3 +69,19 @@ struct WtkWindow {
 };
 
 extern Wtk WTK;
+
+bool    platformStart           (void);
+bool    platformStop            (void);
+
+bool    platformCreateWindow    (WtkWindow *window);
+void    platformDeleteWindow    (WtkWindow *window);
+bool    platformCreateContext   (WtkWindow *window, WtkWindowDesc const *desc);
+void    platformDeleteContext   (WtkWindow *window);
+
+void    platformMakeCurrent     (WtkWindow const *window);
+void    platformSwapBuffers     (WtkWindow const *window);
+void    platformPollEvents      (void);
+
+void    platformSetWindowPos    (WtkWindow *window, int x, int y);
+void    platformSetWindowSize   (WtkWindow *window, int w, int h);
+void    platformSetWindowTitle  (WtkWindow *window, char const *title);

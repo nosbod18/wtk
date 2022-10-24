@@ -1,10 +1,11 @@
+#ifdef WTK_USE_COCOA
+
 #define GL_SILENCE_DEPRECATION
 #import "wtk/wtk.h"
 #import "platform.h"
-
 #import "plugins/log/log.h"
-
 #import <Cocoa/Cocoa.h>
+#import <stdbool.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper functions ///////////////////////////////////////////////////////////
@@ -208,7 +209,7 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type) {
 ///////////////////////////////////////////////////////////////////////////////
 // Internal platform functions ////////////////////////////////////////////////
 
-static int platformStart(void) {
+bool platformStart(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
@@ -227,7 +228,7 @@ static int platformStart(void) {
     } // autoreleasepool
 }
 
-static void platformStop(void) {
+void platformStop(void) {
     @autoreleasepool {
 
     [NSApp terminate:nil];
@@ -239,7 +240,7 @@ static void platformStop(void) {
 ///////////////////////////////////////////////////////////////////////////////
 // External platform functions ////////////////////////////////////////////////
 
-int platformCreateWindow(WtkWindow *window) {
+bool platformCreateWindow(WtkWindow *window) {
     @autoreleasepool {
 
     window->cocoa.window = [[NSWindow alloc]
@@ -275,7 +276,7 @@ void platformDeleteWindow(WtkWindow *window) {
     } // autoreleasepool
 }
 
-int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
+bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     @autoreleasepool {
     (void)desc; // TODO
 
@@ -370,3 +371,5 @@ void platformSetWindowTitle(WtkWindow *window, char const *title) {
 
     } // autoreleasepool
 }
+
+#endif // WTK_USE_COCOA

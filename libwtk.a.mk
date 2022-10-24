@@ -1,11 +1,14 @@
-SOURCES := source/wtk.c
-INCLUDE := include source
-CFLAGS  := -std=c99 -Wall
+sources  := source/wtk.c
+includes := source
+INCLUDES := include
+cflags   := -std=c99 -Wall
 
 ifeq ($(OS),Darwin)
-	CFLAGS += -DWTK_USE_COCOA -x objective-c -Wno-deprecated-declarations
+	cflags  += -DWTK_USE_COCOA -x objective-c -Wno-deprecated-declarations
+	LDFLAGS := -framework Cocoa -framework OpenGL
 else ifeq ($(OS),Linux)
-	CFLAGS += -DWTK_USE_X11
+	cflags  += -DWTK_USE_X11
+	LDFLAGS := -lX11 -lGL
 else
 	$(error "Wtk currenly only supports MacOS and Linux")
 endif

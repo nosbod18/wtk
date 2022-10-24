@@ -1,3 +1,5 @@
+#ifdef WTK_USE_X11
+
 #include "wtk/wtk.h"
 #include "platform.h"
 
@@ -8,6 +10,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include <stdbool.h>
 #include <stdlib.h> // malloc, free
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,12 +56,12 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type, XEvent const *e
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Internal platform functions ////////////////////////////////////////////////////////////////////////////////////////
+// Platform functions /////////////////////////////////////////////////////////////////////////////////////////////////
 
-static int platformStart(void) {
+bool platformStart(void) {
     if (!(WTK.x11.display = XOpenDisplay(NULL))) {
         error("Failed to open X display");
-        return 0;
+        return false;
     }
 
     WTK.x11.context = XUniqueContext();
@@ -68,34 +71,31 @@ static int platformStart(void) {
 
     if (!(WTK.x11.colormap = XCreateColormap(WTK.x11.display, WTK.x11.root, WTK.x11.visual, AllocNone))) {
         error("Failed to create colormap");
-        return 0;
+        return false;
     }
 
     WTK.x11.depth = DefaultDepth(WTK.x11.display, WTK.x11.screen);
 
     if (!(WTK.x11.wmDeleteWindow = XInternAtom(WTK.x11.display, "WM_DELETE_WINDOW", False))) {
         error("Failed to intern WM_DELETE_WINDOW atom");
-        return 0;
+        return false;
     }
 
     if (!gladLoaderLoadGLX(WTK.x11.display, WTK.x11.screen)) {
         error("Failed to load GLX");
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
-static void platformStop(void) {
+void platformStop(void) {
     XFreeColormap(WTK.x11.display, WTK.x11.colormap);
     XCloseDisplay(WTK.x11.display);
     gladLoaderUnloadGLX();
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// External platform functions ////////////////////////////////////////////////////////////////////////////////////////
-
-int platformCreateWindow(WtkWindow *window) {
+bool platformCreateWindow(WtkWindow *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
         .colormap = WTK.x11.colormap
@@ -110,30 +110,30 @@ int platformCreateWindow(WtkWindow *window) {
 
     if (!window->x11.window) {
         error("Failed to create X11 window");
-        return 0;
+        return false;
     }
 
     if (!XSetWMProtocols(WTK.x11.display, window->x11.window, &WTK.x11.wmDeleteWindow, 1)) {
         error("Failed to set window manager protocols");
-        return 0;
+        return false;
     }
 
     if (XSaveContext(WTK.x11.display, window->x11.window, WTK.x11.context, (XPointer)window)) {
         error("Failed to save X context");
-        return 0;
+        return false;
     }
 
     XMapWindow(WTK.x11.display, window->x11.window);
     XFlush(WTK.x11.display);
 
-    return 1;
+    return true;
 }
 
 void platformDeleteWindow(WtkWindow *window) {
     XDestroyWindow(WTK.x11.display, window->x11.window);
 }
 
-int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
+bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     GLint visualAttribs[] = {
         GLX_RENDER_TYPE,  GLX_RGBA_BIT,
         GLX_DOUBLEBUFFER, 1,
@@ -145,7 +145,7 @@ int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
 
     if (!fbc || !fbcount) {
         error("Failed to find suitable a framebuffer config");
-        return 0;
+        return false;
     }
 
     GLint contextAttribs[] = {
@@ -156,7 +156,7 @@ int platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     };
 
     window->x11.context = glXCreateContextAttribsARB(WTK.x11.display, fbc[0], NULL, 1, contextAttribs);
-    return 1;
+    return true;
 }
 
 void platformDeleteContext(WtkWindow *window) {
@@ -218,3 +218,5 @@ void platformSetWindowSize(WtkWindow *window, int w, int h) {
 void platformSetWindowTitle(WtkWindow *window, char const *title) {
     XStoreName(WTK.x11.display, window->x11.window, title);
 }
+
+#endif // WTK_USE_X11

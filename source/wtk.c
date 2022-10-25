@@ -162,7 +162,7 @@ void wtkSetWindowShouldClose(WtkWindow *window, int shouldClose) {
     window->shouldClose = shouldClose;
 }
 
-WtkGLLoadFunc *wtkGetProcAddress(char const *name) {
+WtkGLProc *wtkGetProcAddress(char const *name) {
     if (!name) {
         error("Name cannot be NULL");
         return NULL;

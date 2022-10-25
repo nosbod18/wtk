@@ -6,7 +6,6 @@ cflags   := -std=c99 -Wall
 ifeq ($(OS),Darwin)
 	sources += source/platform/cocoa.m
 	cflags  += -DWTK_USE_COCOA -Wno-deprecated-declarations
-	CFLAGS  := -Wno-incompatible-function-pointer-types
 	LDFLAGS := -framework Cocoa -framework OpenGL
 else ifeq ($(OS),Linux)
 	sources += source/platform/x11.c

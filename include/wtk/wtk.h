@@ -79,7 +79,6 @@ typedef struct WtkWindowDesc {      // Defaults:
 } WtkWindowDesc;
 
 typedef void WtkGLProc(void);
-typedef WtkGLProc *WtkGLLoadFunc(char const *name);
 
 WtkWindow      *wtkCreateWindow         (WtkWindowDesc *desc);
 void            wtkDeleteWindow         (WtkWindow *window);
@@ -97,4 +96,4 @@ void            wtkSetWindowSize        (WtkWindow *window, int w, int h);
 void            wtkSetWindowTitle       (WtkWindow *window, char const *title);
 void            wtkSetWindowShouldClose (WtkWindow *window, int shouldClose);
 
-WtkGLLoadFunc  *wtkGetProcAddress       (char const *name);
+WtkGLProc      *wtkGetProcAddress       (char const *name);

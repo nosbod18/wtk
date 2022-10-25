@@ -219,4 +219,8 @@ void platformSetWindowTitle(WtkWindow *window, char const *title) {
     XStoreName(WTK.x11.display, window->x11.window, title);
 }
 
+WtkGLProc *platformGetProcAddress(char const *name) {
+    return glXGetProcAddress((GLubyte const *)name);
+}
+
 #endif // WTK_USE_X11

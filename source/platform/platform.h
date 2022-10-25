@@ -87,4 +87,4 @@ void            platformSetWindowPos    (WtkWindow *window, int x, int y);
 void            platformSetWindowSize   (WtkWindow *window, int w, int h);
 void            platformSetWindowTitle  (WtkWindow *window, char const *title);
 
-WtkGLLoadFunc  *platformGetProcAddress   (char const *name);
+WtkGLProc      *platformGetProcAddress   (char const *name);

@@ -375,9 +375,9 @@ void platformSetWindowTitle(WtkWindow *window, char const *title) {
     } // autoreleasepool
 }
 
-WtkGLLoadFunc *platformGetProcAddress(char const *name) {
+WtkGLProc *platformGetProcAddress(char const *name) {
     CFStringRef symbolName = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
-    WtkGLLoadFunc *symbol = CFBundleGetFunctionPointerForName(WTK.cocoa.bundle, symbolName);
+    WtkGLProc *symbol = CFBundleGetFunctionPointerForName(WTK.cocoa.bundle, symbolName);
     CFRelease(symbolName);
     return symbol;
 }

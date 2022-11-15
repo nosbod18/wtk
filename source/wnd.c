@@ -1,16 +1,16 @@
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 #include "platform/platform.h"
 #include "plugins/log/log.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
-Wtk WTK = {0};
+Wnd _wnd = {0};
 
-static void defaultEventCallback(WtkEvent const *event) {
+static void defaultEventCallback(WndEvent const *event) {
     (void)event;
 }
 
-static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
+static bool validateWndWindowDesc(WndWindowDesc *desc) {
     if (!desc)
         return false;
 
@@ -24,11 +24,11 @@ static bool validateWtkWindowDesc(WtkWindowDesc *desc) {
     return true;
 }
 
-WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
-    if (!validateWtkWindowDesc(desc))
+WndWindow *WndCreateWindow(WndWindowDesc *desc) {
+    if (!validateWndWindowDesc(desc))
         return NULL;
 
-    if (WTK.windowCount == 0) {
+    if (_wnd.windowCount == 0) {
         if (!platformStart()) {
             error("Failed to start the platform layer");
             platformStop();
@@ -36,7 +36,7 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
         }
     }
 
-    WtkWindow *window = malloc(sizeof *window);
+    WndWindow *window = malloc(sizeof *window);
     if (!window) {
         error("Failed to allocate window");
         return NULL;
@@ -49,15 +49,15 @@ WtkWindow *wtkCreateWindow(WtkWindowDesc *desc) {
     window->shouldClose = 0;
 
     if (!platformCreateWindow(window) || !platformCreateContext(window, desc)) {
-        wtkDeleteWindow(window);
+        WndDeleteWindow(window);
         return NULL;
     }
 
-    WTK.windowCount++;
+    _wnd.windowCount++;
     return window;
 }
 
-void wtkDeleteWindow(WtkWindow *window) {
+void WndDeleteWindow(WndWindow *window) {
     if (!window)
         return;
 
@@ -65,16 +65,16 @@ void wtkDeleteWindow(WtkWindow *window) {
     platformDeleteWindow(window);
     free(window);
 
-    WTK.windowCount--;
-    if (WTK.windowCount == 0)
+    _wnd.windowCount--;
+    if (_wnd.windowCount == 0)
         platformStop();
 }
 
-void wtkMakeCurrent(WtkWindow const *window) {
+void WndMakeCurrent(WndWindow const *window) {
     platformMakeCurrent(window);
 }
 
-void wtkSwapBuffers(WtkWindow const *window) {
+void WndSwapBuffers(WndWindow const *window) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -83,11 +83,11 @@ void wtkSwapBuffers(WtkWindow const *window) {
     platformSwapBuffers(window);
 }
 
-void wtkPollEvents(void) {
+void WndPollEvents(void) {
     platformPollEvents();
 }
 
-void wtkGetWindowPos(WtkWindow const *window, int *x, int *y) {
+void WndGetWindowPos(WndWindow const *window, int *x, int *y) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -97,7 +97,7 @@ void wtkGetWindowPos(WtkWindow const *window, int *x, int *y) {
     if (y) *y = window->y;
 }
 
-void wtkGetWindowSize(WtkWindow const *window, int *w, int *h) {
+void WndGetWindowSize(WndWindow const *window, int *w, int *h) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -107,11 +107,11 @@ void wtkGetWindowSize(WtkWindow const *window, int *w, int *h) {
     if (h) *h = window->h;
 }
 
-int wtkGetWindowShouldClose(WtkWindow const *window) {
+int WndGetWindowShouldClose(WndWindow const *window) {
     return window ? window->shouldClose : 1;
 }
 
-void wtkSetWindowPos(WtkWindow *window, int x, int y) {
+void WndSetWindowPos(WndWindow *window, int x, int y) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -122,7 +122,7 @@ void wtkSetWindowPos(WtkWindow *window, int x, int y) {
     window->y = y;
 }
 
-void wtkSetWindowSize(WtkWindow *window, int w, int h) {
+void WndSetWindowSize(WndWindow *window, int w, int h) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -138,7 +138,7 @@ void wtkSetWindowSize(WtkWindow *window, int w, int h) {
     window->h = h;
 }
 
-void wtkSetWindowTitle(WtkWindow *window, char const *title) {
+void WndSetWindowTitle(WndWindow *window, char const *title) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -153,7 +153,7 @@ void wtkSetWindowTitle(WtkWindow *window, char const *title) {
     window->title = title;
 }
 
-void wtkSetWindowShouldClose(WtkWindow *window, int shouldClose) {
+void WndSetWindowShouldClose(WndWindow *window, int shouldClose) {
     if (!window) {
         error("Window cannot be NULL");
         return;
@@ -162,7 +162,7 @@ void wtkSetWindowShouldClose(WtkWindow *window, int shouldClose) {
     window->shouldClose = shouldClose;
 }
 
-WtkGLProc *wtkGetProcAddress(char const *name) {
+WndGLProc *WndGetProcAddress(char const *name) {
     if (!name) {
         error("Name cannot be NULL");
         return NULL;

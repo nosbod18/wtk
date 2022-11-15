@@ -1,10 +1,8 @@
-#ifdef WTK_USE_X11
+#if defined(__linux__)
 
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 #include "platform.h"
 
-#define GLAD_GLX_IMPLEMENTATION
-#include "plugins/glad/glx.h"
 #include "plugins/log/log.h"
 
 #include <X11/Xlib.h>
@@ -28,8 +26,8 @@ static unsigned int translateMods(unsigned int mask) {
     return mask; // TODO
 }
 
-static void postInputEvent(WtkWindow *window, WtkEventType type, XEvent const *event) {
-    window->onEvent(&(WtkEvent){
+static void postInputEvent(WndWindow *window, WndEventType type, XEvent const *event) {
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type,
         .time = event->xkey.time,
@@ -47,8 +45,8 @@ static void postInputEvent(WtkWindow *window, WtkEventType type, XEvent const *e
     });
 }
 
-static void postOtherEvent(WtkWindow *window, WtkEventType type, XEvent const *event) {
-    window->onEvent(&(WtkEvent){
+static void postOtherEvent(WndWindow *window, WndEventType type, XEvent const *event) {
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type,
         .time = event->xkey.time
@@ -59,53 +57,49 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type, XEvent const *e
 // Platform functions /////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool platformStart(void) {
-    if (!(WTK.x11.display = XOpenDisplay(NULL))) {
+    if (!(_wnd.x11.display = XOpenDisplay(NULL))) {
         error("Failed to open X display");
         return false;
     }
 
-    WTK.x11.context = XUniqueContext();
-    WTK.x11.screen = DefaultScreen(WTK.x11.display);
-    WTK.x11.root = RootWindow(WTK.x11.display, WTK.x11.screen);
-    WTK.x11.visual = DefaultVisual(WTK.x11.display, WTK.x11.screen);
+    _wnd.x11.context = XUniqueContext();
+    _wnd.x11.screen = DefaultScreen(_wnd.x11.display);
+    _wnd.x11.root = RootWindow(_wnd.x11.display, _wnd.x11.screen);
+    _wnd.x11.visual = DefaultVisual(_wnd.x11.display, _wnd.x11.screen);
 
-    if (!(WTK.x11.colormap = XCreateColormap(WTK.x11.display, WTK.x11.root, WTK.x11.visual, AllocNone))) {
+    if (!(_wnd.x11.colormap = XCreateColormap(_wnd.x11.display, _wnd.x11.root, _wnd.x11.visual, AllocNone))) {
         error("Failed to create colormap");
         return false;
     }
 
-    WTK.x11.depth = DefaultDepth(WTK.x11.display, WTK.x11.screen);
+    _wnd.x11.depth = DefaultDepth(_wnd.x11.display, _wnd.x11.screen);
 
-    if (!(WTK.x11.wmDeleteWindow = XInternAtom(WTK.x11.display, "WM_DELETE_WINDOW", False))) {
+    if (!(_wnd.x11.wmDeleteWindow = XInternAtom(_wnd.x11.display, "WM_DELETE_WINDOW", False))) {
         error("Failed to intern WM_DELETE_WINDOW atom");
         return false;
     }
 
-    if (!gladLoaderLoadGLX(WTK.x11.display, WTK.x11.screen)) {
-        error("Failed to load GLX");
-        return false;
-    }
+    _wnd.x11.glXCreateContextAttribsARB = (void *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
 
     return true;
 }
 
 void platformStop(void) {
-    XFreeColormap(WTK.x11.display, WTK.x11.colormap);
-    XCloseDisplay(WTK.x11.display);
-    gladLoaderUnloadGLX();
+    XFreeColormap(_wnd.x11.display, _wnd.x11.colormap);
+    XCloseDisplay(_wnd.x11.display);
 }
 
-bool platformCreateWindow(WtkWindow *window) {
+bool platformCreateWindow(WndWindow *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
-        .colormap = WTK.x11.colormap
+        .colormap = _wnd.x11.colormap
     };
 
     window->x11.window = XCreateWindow(
-        WTK.x11.display, WTK.x11.root,
+        _wnd.x11.display, _wnd.x11.root,
         0, 0, window->w, window->h,
-        0, WTK.x11.depth, InputOutput,
-        WTK.x11.visual, CWColormap | CWEventMask, &swa
+        0, _wnd.x11.depth, InputOutput,
+        _wnd.x11.visual, CWColormap | CWEventMask, &swa
     );
 
     if (!window->x11.window) {
@@ -113,27 +107,27 @@ bool platformCreateWindow(WtkWindow *window) {
         return false;
     }
 
-    if (!XSetWMProtocols(WTK.x11.display, window->x11.window, &WTK.x11.wmDeleteWindow, 1)) {
+    if (!XSetWMProtocols(_wnd.x11.display, window->x11.window, &_wnd.x11.wmDeleteWindow, 1)) {
         error("Failed to set window manager protocols");
         return false;
     }
 
-    if (XSaveContext(WTK.x11.display, window->x11.window, WTK.x11.context, (XPointer)window)) {
+    if (XSaveContext(_wnd.x11.display, window->x11.window, _wnd.x11.context, (XPointer)window)) {
         error("Failed to save X context");
         return false;
     }
 
-    XMapWindow(WTK.x11.display, window->x11.window);
-    XFlush(WTK.x11.display);
+    XMapWindow(_wnd.x11.display, window->x11.window);
+    XFlush(_wnd.x11.display);
 
     return true;
 }
 
-void platformDeleteWindow(WtkWindow *window) {
-    XDestroyWindow(WTK.x11.display, window->x11.window);
+void platformDeleteWindow(WndWindow *window) {
+    XDestroyWindow(_wnd.x11.display, window->x11.window);
 }
 
-bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
+bool platformCreateContext(WndWindow *window, WndWindowDesc const *desc) {
     GLint visualAttribs[] = {
         GLX_RENDER_TYPE,  GLX_RGBA_BIT,
         GLX_DOUBLEBUFFER, 1,
@@ -141,7 +135,7 @@ bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     };
 
     int fbcount = 0;
-    GLXFBConfig *fbc = glXChooseFBConfig(WTK.x11.display, WTK.x11.screen, visualAttribs, &fbcount);
+    GLXFBConfig *fbc = glXChooseFBConfig(_wnd.x11.display, _wnd.x11.screen, visualAttribs, &fbcount);
 
     if (!fbc || !fbcount) {
         error("Failed to find suitable a framebuffer config");
@@ -155,50 +149,56 @@ bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
         None
     };
 
-    window->x11.context = glXCreateContextAttribsARB(WTK.x11.display, fbc[0], NULL, 1, contextAttribs);
+    if (!_wnd.x11.glXCreateContextAttribsARB) {
+        error("Could not use glXCreateContextAttribsARB, expect the wrong version of OpenGL");
+        window->x11.context = glXCreateNewContext(_wnd.x11.display, fbc[0], GLX_RGBA_TYPE, NULL, True);
+    } else {
+        window->x11.context = _wnd.x11.glXCreateContextAttribsARB(_wnd.x11.display, fbc[0], NULL, 1, contextAttribs);
+    }
+
     return true;
 }
 
-void platformDeleteContext(WtkWindow *window) {
-    glXDestroyContext(WTK.x11.display, window->x11.context);
+void platformDeleteContext(WndWindow *window) {
+    glXDestroyContext(_wnd.x11.display, window->x11.context);
 }
 
-void platformMakeCurrent(WtkWindow const *window) {
+void platformMakeCurrent(WndWindow const *window) {
     if (window)
-        glXMakeContextCurrent(WTK.x11.display, window->x11.window, window->x11.window, window->x11.context);
+        glXMakeContextCurrent(_wnd.x11.display, window->x11.window, window->x11.window, window->x11.context);
     else
-        glXMakeContextCurrent(WTK.x11.display, 0, 0, NULL);
+        glXMakeContextCurrent(_wnd.x11.display, 0, 0, NULL);
 }
 
-void platformSwapBuffers(WtkWindow const *window) {
-    glXSwapBuffers(WTK.x11.display, window->x11.window);
+void platformSwapBuffers(WndWindow const *window) {
+    glXSwapBuffers(_wnd.x11.display, window->x11.window);
 }
 
 void platformPollEvents(void) {
-    WtkWindow *window;
+    WndWindow *window;
     XEvent event;
 
-    while (XPending(WTK.x11.display)) {
-        XNextEvent(WTK.x11.display, &event);
-        if (XFindContext(WTK.x11.display, event.xany.window, WTK.x11.context, (XPointer *)&window))
+    while (XPending(_wnd.x11.display)) {
+        XNextEvent(_wnd.x11.display, &event);
+        if (XFindContext(_wnd.x11.display, event.xany.window, _wnd.x11.context, (XPointer *)&window))
             continue;
 
         switch (event.type) {
-            case ConfigureNotify:   postOtherEvent(window, WtkEventType_WindowResize, &event);      break;
-            case MapNotify:         postOtherEvent(window, WtkEventType_WindowFocusIn, &event);     break;
-            case UnmapNotify:       postOtherEvent(window, WtkEventType_WindowFocusOut, &event);    break;
-            case KeyPress:          postInputEvent(window, WtkEventType_KeyDown, &event);           break;
-            case KeyRelease:        postInputEvent(window, WtkEventType_KeyUp, &event);             break;
-            case ButtonPress:       postInputEvent(window, WtkEventType_MouseDown, &event);         break;
-            case ButtonRelease:     postInputEvent(window, WtkEventType_MouseUp, &event);           break;
-            case MotionNotify:      postInputEvent(window, WtkEventType_MouseMotion, &event);       break;
-            case EnterNotify:       postOtherEvent(window, WtkEventType_MouseEnter, &event);        break;
-            case LeaveNotify:       postOtherEvent(window, WtkEventType_MouseLeave, &event);        break;
+            case ConfigureNotify:   postOtherEvent(window, WndEventType_WindowResize, &event);      break;
+            case MapNotify:         postOtherEvent(window, WndEventType_WindowFocusIn, &event);     break;
+            case UnmapNotify:       postOtherEvent(window, WndEventType_WindowFocusOut, &event);    break;
+            case KeyPress:          postInputEvent(window, WndEventType_KeyDown, &event);           break;
+            case KeyRelease:        postInputEvent(window, WndEventType_KeyUp, &event);             break;
+            case ButtonPress:       postInputEvent(window, WndEventType_MouseDown, &event);         break;
+            case ButtonRelease:     postInputEvent(window, WndEventType_MouseUp, &event);           break;
+            case MotionNotify:      postInputEvent(window, WndEventType_MouseMotion, &event);       break;
+            case EnterNotify:       postOtherEvent(window, WndEventType_MouseEnter, &event);        break;
+            case LeaveNotify:       postOtherEvent(window, WndEventType_MouseLeave, &event);        break;
             case ClientMessage:
-                if ((Atom)event.xclient.data.l[0] == WTK.x11.wmDeleteWindow) {
-                    // wtkSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
-                    wtkSetWindowShouldClose(window, 1);
-                    postOtherEvent(window, WtkEventType_WindowClose, &event);
+                if ((Atom)event.xclient.data.l[0] == _wnd.x11.wmDeleteWindow) {
+                    // WndSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
+                    WndSetWindowShouldClose(window, 1);
+                    postOtherEvent(window, WndEventType_WindowClose, &event);
                 }
                 break;
             default:
@@ -207,20 +207,20 @@ void platformPollEvents(void) {
     }
 }
 
-void platformSetWindowPos(WtkWindow *window, int x, int y) {
-    XMoveWindow(WTK.x11.display, window->x11.window, x, y);
+void platformSetWindowPos(WndWindow *window, int x, int y) {
+    XMoveWindow(_wnd.x11.display, window->x11.window, x, y);
 }
 
-void platformSetWindowSize(WtkWindow *window, int w, int h) {
-    XResizeWindow(WTK.x11.display, window->x11.window, (unsigned int)w, (unsigned int)h);
+void platformSetWindowSize(WndWindow *window, int w, int h) {
+    XResizeWindow(_wnd.x11.display, window->x11.window, (unsigned int)w, (unsigned int)h);
 }
 
-void platformSetWindowTitle(WtkWindow *window, char const *title) {
-    XStoreName(WTK.x11.display, window->x11.window, title);
+void platformSetWindowTitle(WndWindow *window, char const *title) {
+    XStoreName(_wnd.x11.display, window->x11.window, title);
 }
 
-WtkGLProc *platformGetProcAddress(char const *name) {
+WndGLProc *platformGetProcAddress(char const *name) {
     return glXGetProcAddress((GLubyte const *)name);
 }
 
-#endif // WTK_USE_X11
+#endif // __linux__

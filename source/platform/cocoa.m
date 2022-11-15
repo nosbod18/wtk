@@ -1,7 +1,7 @@
-#ifdef WTK_USE_COCOA
+#if defined(__APPLE__) && defined(__OBJC__) 
 
 #define GL_SILENCE_DEPRECATION
-#import "wtk/wtk.h"
+#import "wnd/wnd.h"
 #import "platform.h"
 #import "plugins/log/log.h"
 #import <Cocoa/Cocoa.h>
@@ -22,10 +22,10 @@ static int translateModifiers(int mods) {
     return mods; // TODO
 }
 
-static void postKeyEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
+static void postKeyEvent(WndWindow *window, WndEventType type, NSEvent const *event) {
     @autoreleasepool {
 
-    window->onEvent(&(WtkEvent){
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type,
         .time = [event timestamp],
@@ -42,8 +42,8 @@ static void postKeyEvent(WtkWindow *window, WtkEventType type, NSEvent const *ev
     } // autoreleasepool
 }
 
-static void postButtonEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
-    window->onEvent(&(WtkEvent){
+static void postButtonEvent(WndWindow *window, WndEventType type, NSEvent const *event) {
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type,
         .time = [event timestamp],
@@ -59,8 +59,8 @@ static void postButtonEvent(WtkWindow *window, WtkEventType type, NSEvent const 
     });
 }
 
-static void postMotionOrScrollEvent(WtkWindow *window, WtkEventType type, NSEvent const *event) {
-    window->onEvent(&(WtkEvent){
+static void postMotionOrScrollEvent(WndWindow *window, WndEventType type, NSEvent const *event) {
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type,
         .time = [event timestamp],
@@ -77,8 +77,8 @@ static void postMotionOrScrollEvent(WtkWindow *window, WtkEventType type, NSEven
     });
 }
 
-static void postOtherEvent(WtkWindow *window, WtkEventType type) {
-    window->onEvent(&(WtkEvent){
+static void postOtherEvent(WndWindow *window, WndEventType type) {
+    window->onEvent(&(WndEvent){
         .window = window,
         .type = type
     });
@@ -111,7 +111,7 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type) {
 @end
 
 @implementation ContentView
-- (id)initWithFrame:(NSRect)frame window:(WtkWindow *)window {
+- (id)initWithFrame:(NSRect)frame window:(WndWindow *)window {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFAOpenGLProfile,   NSOpenGLProfileVersion4_1Core,
         NSOpenGLPFAMultisample,
@@ -134,74 +134,74 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type) {
 }
 
 -(void)windowDidBecomeKey:(NSNotification *)notification {
-    postOtherEvent(m_window, WtkEventType_WindowFocusIn);
+    postOtherEvent(m_window, WndEventType_WindowFocusIn);
 }
 
 -(void)windowDidResignKey:(NSNotification *)notification {
-    postOtherEvent(m_window, WtkEventType_WindowFocusOut);
+    postOtherEvent(m_window, WndEventType_WindowFocusOut);
 }
 
 -(void)windowDidResize:(NSNotification *)notification {
-    postOtherEvent(m_window, WtkEventType_WindowResize);
+    postOtherEvent(m_window, WndEventType_WindowResize);
 }
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
-    // wtkSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
-    wtkSetWindowShouldClose(m_window, true);
-    postOtherEvent(m_window, WtkEventType_WindowClose);
+    // WndSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
+    WndSetWindowShouldClose(m_window, true);
+    postOtherEvent(m_window, WndEventType_WindowClose);
     return NO;
 }
 
 -(void)mouseDown:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WndEventType_MouseDown, event);
 }
 
 -(void)mouseUp:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WndEventType_MouseUp, event);
 }
 
 -(void)mouseDragged:(NSEvent *)event {
-    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WndEventType_MouseMotion, event);
 }
 
 -(void)scrollWheel:(NSEvent *)event {
-    postMotionOrScrollEvent(m_window, WtkEventType_MouseScroll, event);
+    postMotionOrScrollEvent(m_window, WndEventType_MouseScroll, event);
 }
 
 -(void)rightMouseDown:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WndEventType_MouseDown, event);
 }
 
 -(void)rightMouseUp:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WndEventType_MouseUp, event);
 }
 
 -(void)rightMouseDragged:(NSEvent *)event {
-    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WndEventType_MouseMotion, event);
 }
 
 -(void)otherMouseDown:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseDown, event);
+    postButtonEvent(m_window, WndEventType_MouseDown, event);
 }
 
 -(void)otherMouseUp:(NSEvent *)event {
-    postButtonEvent(m_window, WtkEventType_MouseUp, event);
+    postButtonEvent(m_window, WndEventType_MouseUp, event);
 }
 
 -(void)otherMouseDragged:(NSEvent *)event {
-    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WndEventType_MouseMotion, event);
 }
 
 -(void)mouseMoved:(NSEvent *)event {
-    postMotionOrScrollEvent(m_window, WtkEventType_MouseMotion, event);
+    postMotionOrScrollEvent(m_window, WndEventType_MouseMotion, event);
 }
 
 -(void)keyDown:(NSEvent *)event {
-    postKeyEvent(m_window, WtkEventType_KeyDown, event);
+    postKeyEvent(m_window, WndEventType_KeyDown, event);
 }
 
 -(void)keyUp:(NSEvent *)event {
-    postKeyEvent(m_window, WtkEventType_KeyUp, event);
+    postKeyEvent(m_window, WndEventType_KeyUp, event);
 }
 
 @end
@@ -214,17 +214,17 @@ bool platformStart(void) {
 
     [NSApplication sharedApplication];
 
-    WTK.cocoa.appDelegate = [[AppDelegate alloc] init];
-    if (!WTK.cocoa.appDelegate) {
+    _wnd.cocoa.appDelegate = [[AppDelegate alloc] init];
+    if (!_wnd.cocoa.appDelegate) {
         error("Failed to initialize AppDelegate");
         return false;
     }
 
-    [NSApp setDelegate:WTK.cocoa.appDelegate];
+    [NSApp setDelegate:_wnd.cocoa.appDelegate];
     [NSApp finishLaunching];
 
-    WTK.cocoa.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
-    if (!WTK.cocoa.bundle) {
+    _wnd.cocoa.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
+    if (!_wnd.cocoa.bundle) {
         error("Failed to locate OpenGL framework");
         return false;
     }
@@ -238,12 +238,12 @@ void platformStop(void) {
     @autoreleasepool {
 
     [NSApp terminate:nil];
-    [WTK.cocoa.appDelegate release];
+    [_wnd.cocoa.appDelegate release];
 
     } // autoreleasepool
 }
 
-bool platformCreateWindow(WtkWindow *window) {
+bool platformCreateWindow(WndWindow *window) {
     @autoreleasepool {
 
     window->cocoa.window = [[NSWindow alloc]
@@ -267,7 +267,7 @@ bool platformCreateWindow(WtkWindow *window) {
     } // autoreleasepool
 }
 
-void platformDeleteWindow(WtkWindow *window) {
+void platformDeleteWindow(WndWindow *window) {
     @autoreleasepool {
 
     if (!window->cocoa.window)
@@ -279,7 +279,7 @@ void platformDeleteWindow(WtkWindow *window) {
     } // autoreleasepool
 }
 
-bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
+bool platformCreateContext(WndWindow *window, WndWindowDesc const *desc) {
     @autoreleasepool {
     (void)desc; // TODO
 
@@ -298,7 +298,7 @@ bool platformCreateContext(WtkWindow *window, WtkWindowDesc const *desc) {
     } // autoreleasepool
 }
 
-void platformDeleteContext(WtkWindow *window) {
+void platformDeleteContext(WndWindow *window) {
     @autoreleasepool {
 
     if (!window->cocoa.view)
@@ -313,7 +313,7 @@ void platformDeleteContext(WtkWindow *window) {
     } // autoreleasepool
 }
 
-void platformMakeCurrent(WtkWindow const *window) {
+void platformMakeCurrent(WndWindow const *window) {
     @autoreleasepool {
 
     if (window)
@@ -324,7 +324,7 @@ void platformMakeCurrent(WtkWindow const *window) {
     } // autoreleasepool
 }
 
-void platformSwapBuffers(WtkWindow const *window) {
+void platformSwapBuffers(WndWindow const *window) {
     @autoreleasepool {
 
     [[window->cocoa.view openGLContext] flushBuffer];
@@ -346,7 +346,7 @@ void platformPollEvents(void) {
     } // autoreleasepool
 }
 
-void platformSetWindowPos(WtkWindow *window, int x, int y) {
+void platformSetWindowPos(WndWindow *window, int x, int y) {
     @autoreleasepool {
 
     NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [window->cocoa.view frame].size.height - 1), 0, 0);
@@ -356,7 +356,7 @@ void platformSetWindowPos(WtkWindow *window, int x, int y) {
     } // autoreleasepool
 }
 
-void platformSetWindowSize(WtkWindow *window, int w, int h) {
+void platformSetWindowSize(WndWindow *window, int w, int h) {
     @autoreleasepool {
 
     NSRect contentRect = [window->cocoa.window contentRectForFrameRect:[window->cocoa.window frame]];
@@ -367,7 +367,7 @@ void platformSetWindowSize(WtkWindow *window, int w, int h) {
     } // autoreleasepool
 }
 
-void platformSetWindowTitle(WtkWindow *window, char const *title) {
+void platformSetWindowTitle(WndWindow *window, char const *title) {
     @autoreleasepool {
 
     [window->cocoa.window setTitle:@(title)];
@@ -375,11 +375,11 @@ void platformSetWindowTitle(WtkWindow *window, char const *title) {
     } // autoreleasepool
 }
 
-WtkGLProc *platformGetProcAddress(char const *name) {
+WndGLProc *platformGetProcAddress(char const *name) {
     CFStringRef symbolName = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
-    WtkGLProc *symbol = CFBundleGetFunctionPointerForName(WTK.cocoa.bundle, symbolName);
+    WndGLProc *symbol = CFBundleGetFunctionPointerForName(_wnd.cocoa.bundle, symbolName);
     CFRelease(symbolName);
     return symbol;
 }
 
-#endif // WTK_USE_COCOA
+#endif // __APPLE__ && __OBJC__

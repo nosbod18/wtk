@@ -1,4 +1,4 @@
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 
 #define GLAD_GL_IMPLEMENTATION
 #include "glad.h"
@@ -31,9 +31,9 @@ static char const *fsSource =
     "}";
 
 int main(void) {
-    WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
-    wtkMakeCurrent(window);
-    gladLoadGL(wtkGetProcAddress);
+    WndWindow *window = WndCreateWindow(&(WndWindowDesc){0});
+    WndMakeCurrent(window);
+    gladLoadGL(WndGetProcAddress);
 
     unsigned vao;
     glGenVertexArrays(1, &vao);
@@ -62,15 +62,15 @@ int main(void) {
     glAttachShader(program, fs);
     glLinkProgram(program);
 
-    while (!wtkGetWindowShouldClose(window)) {
+    while (!WndGetWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(vao);
         glUseProgram(program);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        wtkSwapBuffers(window);
-        wtkPollEvents();
+        WndSwapBuffers(window);
+        WndPollEvents();
     }
 
     glDeleteProgram(program);
@@ -79,5 +79,5 @@ int main(void) {
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
 
-    wtkDeleteWindow(window);
+    WndDeleteWindow(window);
 }

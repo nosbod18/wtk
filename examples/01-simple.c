@@ -1,14 +1,14 @@
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 
 int main(void) {
-    WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){0});
-    wtkMakeCurrent(window);
+    WndWindow *window = WndCreateWindow(&(WndWindowDesc){0});
+    WndMakeCurrent(window);
 
-    while (!wtkGetWindowShouldClose(window)) {
-        wtkSwapBuffers(window);
-        wtkPollEvents();
+    while (!WndGetWindowShouldClose(window)) {
+        WndSwapBuffers(window);
+        WndPollEvents();
     }
 
-    wtkDeleteWindow(window);
+    WndDeleteWindow(window);
 }
 

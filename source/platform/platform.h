@@ -1,8 +1,8 @@
 #pragma once
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 #include <stdbool.h>
 
-#if defined(WTK_USE_COCOA) && defined(__OBJC__)
+#if defined(__APPLE__) && defined(__OBJC__)
 
     #include <Cocoa/Cocoa.h>
 
@@ -10,81 +10,84 @@
     @end
 
     @interface ContentView : NSOpenGLView <NSWindowDelegate> {
-        WtkWindow *m_window;
+        WndWindow *m_window;
     }
     @end
 
     typedef struct CocoaWindow {
-        NSWindow       *window;
-        ContentView    *view;
+        NSWindow *window;
+        ContentView *view;
     } CocoaWindow;
 
     typedef struct CocoaPlatform {
-        AppDelegate    *appDelegate;
-        CFBundleRef     bundle;
+        AppDelegate *appDelegate;
+        CFBundleRef bundle;
     } CocoaPlatform;
 
-#elif defined(WTK_USE_X11)
+#elif defined(__linux__)
 
     #include <X11/Xlib.h>
-    #include "plugins/glad/glx.h"
+    #include <GL/glx.h>
+
+    typedef GLXContext glXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
 
     typedef struct X11Window {
-        Window          window;
-        GLXContext      context;
+        Window window;
+        GLXContext context;
     } X11Window;
 
     typedef struct X11Platform {
-        Display        *display;
-        XContext        context;
-        Visual         *visual;
-        Window          root;
-        Colormap        colormap;
-        Atom            wmDeleteWindow;
-        int             screen;
-        int             depth;
+        glXCreateContextAttribsARBProc *glXCreateContextAttribsARB;
+        Display *display;
+        XContext context;
+        Visual *visual;
+        Window root;
+        Colormap colormap;
+        Atom wmDeleteWindow;
+        int screen;
+        int depth;
     } X11Platform;
 #endif
 
-typedef struct Wtk {
-    int                 windowCount;
+typedef struct Wnd {
+    int windowCount;
 
-#if defined(WTK_USE_COCOA) && defined(__OBJC__)
-    CocoaPlatform       cocoa;
-#elif defined(WTK_USE_X11)
-    X11Platform         x11;
+#if defined(__APPLE__) && defined(__OBJC__)
+    CocoaPlatform cocoa;
+#elif defined(__linux__)
+    X11Platform x11;
 #endif
-} Wtk;
+} Wnd;
 
-struct WtkWindow {
-    WtkEventCallback   *onEvent;
-    char const         *title;
-    int                 x, y, w, h;
-    bool                shouldClose;
+struct WndWindow {
+    WndEventCallback *onEvent;
+    char const *title;
+    int x, y, w, h;
+    bool shouldClose;
 
-#if defined(WTK_USE_COCOA) && defined(__OBJC__)
-    CocoaWindow         cocoa;
-#elif defined(WTK_USE_X11)
-    X11Window           x11;
+#if defined(__APPLE__) && defined(__OBJC__)
+    CocoaWindow cocoa;
+#elif defined(__linux__)
+    X11Window x11;
 #endif
 };
 
-extern Wtk WTK;
+extern Wnd _wnd;
 
-bool            platformStart           (void);
-void            platformStop            (void);
+bool        platformStart           (void);
+void        platformStop            (void);
 
-bool            platformCreateWindow    (WtkWindow *window);
-void            platformDeleteWindow    (WtkWindow *window);
-bool            platformCreateContext   (WtkWindow *window, WtkWindowDesc const *desc);
-void            platformDeleteContext   (WtkWindow *window);
+bool        platformCreateWindow    (WndWindow *window);
+void        platformDeleteWindow    (WndWindow *window);
+bool        platformCreateContext   (WndWindow *window, WndWindowDesc const *desc);
+void        platformDeleteContext   (WndWindow *window);
 
-void            platformMakeCurrent     (WtkWindow const *window);
-void            platformSwapBuffers     (WtkWindow const *window);
-void            platformPollEvents      (void);
+void        platformMakeCurrent     (WndWindow const *window);
+void        platformSwapBuffers     (WndWindow const *window);
+void        platformPollEvents      (void);
 
-void            platformSetWindowPos    (WtkWindow *window, int x, int y);
-void            platformSetWindowSize   (WtkWindow *window, int w, int h);
-void            platformSetWindowTitle  (WtkWindow *window, char const *title);
+void        platformSetWindowPos    (WndWindow *window, int x, int y);
+void        platformSetWindowSize   (WndWindow *window, int w, int h);
+void        platformSetWindowTitle  (WndWindow *window, char const *title);
 
-WtkGLProc      *platformGetProcAddress   (char const *name);
+WndGLProc  *platformGetProcAddress   (char const *name);

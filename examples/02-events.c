@@ -1,58 +1,58 @@
-#include "wtk/wtk.h"
+#include "wnd/wnd.h"
 #include <stdio.h>
 
-void onEvent(WtkEvent const *event) {
+void onEvent(WndEvent const *event) {
     switch (event->type) {
-        case WtkEventType_WindowClose:
+        case WndEventType_WindowClose:
             printf("WindowClose={}\n");
             break;
-        case WtkEventType_WindowResize: {
+        case WndEventType_WindowResize: {
             int w, h;
-            wtkGetWindowSize(event->window, &w, &h);
+            WndGetWindowSize(event->window, &w, &h);
             printf("WindowResize={.width=%d, .height=%d}\n", w, h);
         } break;
-        case WtkEventType_WindowFocusIn:
+        case WndEventType_WindowFocusIn:
             printf("WindowFocusIn={}\n");
             break;
-        case WtkEventType_WindowFocusOut:
+        case WndEventType_WindowFocusOut:
             printf("WindowFocusOut={}\n");
             break;
-        case WtkEventType_MouseMotion:
+        case WndEventType_MouseMotion:
             printf("MouseMotion={.button=%d, .mods=%u, .x=%d, .y=%d}\n", event->button, event->mods, event->location.x, event->location.y);
             break;
-        case WtkEventType_MouseScroll:
+        case WndEventType_MouseScroll:
             printf("MouseScroll={.dx=%d, .dy=%d}\n", event->delta.x, event->delta.y);
             break;
-        case WtkEventType_MouseEnter:
+        case WndEventType_MouseEnter:
             printf("MouseEnter={}");
             break;
-        case WtkEventType_MouseLeave:
+        case WndEventType_MouseLeave:
             printf("MouseLeave={}");
             break;
-        case WtkEventType_MouseDown:
+        case WndEventType_MouseDown:
             printf("MouseDown={.button=%d, .mods=%u, .x=%d, .y=%d}\n", event->button, event->mods, event->location.x, event->location.y);
             break;
-        case WtkEventType_MouseUp:
+        case WndEventType_MouseUp:
             printf("MouseDown={.button=%d, .mods=%u, .x=%d, .y=%d}\n", event->button, event->mods, event->location.x, event->location.y);
             break;
-        case WtkEventType_KeyDown:
+        case WndEventType_KeyDown:
             printf("KeyDown={.keycode=%d, .sym=%d, .mods=%u}\n", event->key, event->sym, event->mods);
             break;
-        case WtkEventType_KeyUp:
+        case WndEventType_KeyUp:
             printf("KeyUp={.keycode=%d, .sym=%d, .mods=%u}\n", event->key, event->sym, event->mods);
             break;
     }
 }
 
 int main(void) {
-    WtkWindow *window = wtkCreateWindow(&(WtkWindowDesc){.onEvent = onEvent});
-    wtkMakeCurrent(window);
+    WndWindow *window = WndCreateWindow(&(WndWindowDesc){.onEvent = onEvent});
+    WndMakeCurrent(window);
 
-    while (!wtkGetWindowShouldClose(window)) {
-        wtkSwapBuffers(window);
-        wtkPollEvents();
+    while (!WndGetWindowShouldClose(window)) {
+        WndSwapBuffers(window);
+        WndPollEvents();
     }
 
-    wtkDeleteWindow(window);
+    WndDeleteWindow(window);
 }
 

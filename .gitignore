@@ -2,4 +2,4 @@
 .vscode/
 
 .DS_Store
-libwnd.a
+libwindow.a

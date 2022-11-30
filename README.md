@@ -1,42 +1,38 @@
-# Wnd - OpenGL Windowing library
-Wnd is a simple platform-independent window and OpenGL context library. It provides a unified API for window creation and input handling.
-
-## Supported platforms
-- MacOS (Cocoa)
-- Linux (X11)
-
-## Planned platforms
-- Windows (Win32)
+# Window
+A C99 OpenGL window library
 
 ## Building
 ### MacOS and Linux
 #### `$ make`
-- Builds the library and the examples
+- Builds the library and the examples.
 
-#### `$ make libwnd.a`
-- Builds only the library
+#### `$ make libwindow.a`
+- Builds only the library.
 
 #### `$ make run-{example file without extension}`
-- Runs an example, e.g. `make run-01-simple` runs the first example.
+- Runs an example, e.g. `make run-01-basic` compiles and runs `examples/01-basic.c`.
+- Execute `./.build/$(OS)-$(ARCH)-$(MODE)/bin/{example file without extension}` if you don't want to use `make run`. See the `Makefile` for what `$(OS)`, `$(ARCH)`, and `$(MODE)` are.
 
 ### Windows
 Currently cannot build on Windows
 
 ## Example
 ```c
-#include "wnd/wnd.h"
+#include "window/window.h"
 
 int main(void) {
-    WndWindow *window = WndCreateWindow(&(WndWindowDesc){0});
-    WndMakeCurrent(window);
+    window_t window = {0};
 
-    while (!WndGetWindowShouldClose(window)) {
-        WndSwapBuffers(window);
-        WndPollEvents();
+    window_init(&window);
+    window_make_current(window);
+
+    while (!window.closed) {
+        window_swap_buffers(window);
+        window_poll_events(&window);
     }
 
-    WndDeleteWindow(window);
+    window_fini(window);
 }
 ```
 
-See the [examples](https://www.github.com/nosbod18/wnd/tree/main/examples) directory for more
+See the [examples](https://www.github.com/nosbod18/window/tree/main/examples) directory for more

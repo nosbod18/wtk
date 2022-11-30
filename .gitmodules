@@ -1,6 +1,3 @@
-[submodule "source/plugins/log"]
-	path = source/plugins/log
-	url = https://www.github.com/nosbod18/log
-[submodule "extern/log"]
-	path = extern/log
+[submodule "external/log"]
+	path = external/log
 	url = https://www.github.com/nosbod18/log

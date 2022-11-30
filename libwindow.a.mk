@@ -1,5 +1,6 @@
-sources := source/$(OS).?
-cflags  := -std=c99 -Wall -Wextra -Wpedantic
+sources  := source/$(OS).?
+includes := . external
+cflags   := -std=c99 -Wall -Wextra -Wpedantic
 
 ifeq ($(OS),macos)
 	cflags  += -Wno-deprecated-declarations

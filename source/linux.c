@@ -87,7 +87,7 @@ int window_init(window_t *window) {
     window_x11_t *native = malloc(sizeof *native);
     if (!window) {
         error("Failed to allocate window");
-        return NULL;
+        return 0;
     }
 
     XSetWindowAttributes swa = {

@@ -7,5 +7,5 @@ ifeq ($(OS),macos)
 else ifeq ($(OS),linux)
 	LDFLAGS := -lX11 -lGL
 else
-	$(error "Wnd currently only supports MacOS and Linux")
+	$(error "Window currently only supports MacOS and Linux")
 endif

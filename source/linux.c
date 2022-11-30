@@ -1,5 +1,5 @@
-#include "../window.h"
-#include "../extern/log/log.h"
+#include "window.h"
+#include "log/log.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -35,10 +35,10 @@ static void default_event_callback(window_t *window, int type, window_event_t co
     (void)window; (void)type; (void)event;
 }
 
-static bool platform_init(void) {
+static int platform_init(void) {
     if (!(_wnd.display = XOpenDisplay(NULL))) {
         error("Failed to open X display");
-        return false;
+        return 0;
     }
 
     _wnd.screen = DefaultScreen(_wnd.display);
@@ -47,19 +47,19 @@ static bool platform_init(void) {
 
     if (!(_wnd.colormap = XCreateColormap(_wnd.display, _wnd.root, _wnd.visual, AllocNone))) {
         error("Failed to create colormap");
-        return false;
+        return 0;
     }
 
     _wnd.depth = DefaultDepth(_wnd.display, _wnd.screen);
 
-    if (!(_wnd.wm_delwin = XInternAtom(_wnd.display, "WM_DELETE_WINDOW", False))) {
+    if (!(_wnd.wm_delwin = XInternAtom(_wnd.display, "WM_DELETE_WINDOW", 0))) {
         error("Failed to intern WM_DELETE_WINDOW atom");
-        return false;
+        return 0;
     }
 
     _wnd.glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
 
-    return true;
+    return 1;
 }
 
 static void platform_fini(void) {
@@ -70,9 +70,9 @@ static void platform_fini(void) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Window functions ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool window_init(window_t *window) {
+int window_init(window_t *window) {
     if (!window)
-        return false;
+        return 0;
 
     if (!window->callback)  window->callback = default_event_callback;
     if (!window->title)     window->title = "";
@@ -81,7 +81,7 @@ bool window_init(window_t *window) {
 
     if (_wnd.nwindows == 0) {
         if (!platform_init())
-            return false;
+            return 0;
     }
 
     window_x11_t *native = malloc(sizeof *native);
@@ -104,12 +104,12 @@ bool window_init(window_t *window) {
 
     if (!native->window) {
         error("Failed to create X11 window");
-        return false;
+        return 0;
     }
 
     if (!XSetWMProtocols(_wnd.display, native->window, &_wnd.wm_delwin, 1)) {
         error("Failed to set window manager protocols");
-        return false;
+        return 0;
     }
 
     GLint visualAttribs[] = {
@@ -123,7 +123,7 @@ bool window_init(window_t *window) {
 
     if (!fbc || !fbcount) {
         error("Failed to find suitable a framebuffer config");
-        return false;
+        return 0;
     }
 
     GLint contextAttribs[] = {
@@ -135,7 +135,7 @@ bool window_init(window_t *window) {
 
     if (!_wnd.glXCreateContextAttribsARB) {
         error("Could not use glXCreateContextAttribsARB, expect the wrong version of OpenGL");
-        native->context = glXCreateNewContext(_wnd.display, fbc[0], GLX_RGBA_TYPE, NULL, True);
+        native->context = glXCreateNewContext(_wnd.display, fbc[0], GLX_RGBA_TYPE, NULL, 1);
     } else {
         native->context = _wnd.glXCreateContextAttribsARB(_wnd.display, fbc[0], NULL, 1, contextAttribs);
     }
@@ -145,7 +145,7 @@ bool window_init(window_t *window) {
 
     window->native = native;
     _wnd.nwindows++;
-    return true;
+    return 1;
 }
 
 void window_fini(window_t window) {
@@ -217,7 +217,7 @@ void window_poll_events(window_t *window) {
 
             case ClientMessage: {
                 if ((Atom)event.xclient.data.l[0] == _wnd.wm_delwin) {
-                    window->closed = true; // Must come before window->callback()
+                    window->closed = 1; // Must come before window->callback()
                     window->callback(window, EVENTTYPE_WINDOWCLOSE, &(window_event_t){0});
                 }
             } break;
@@ -253,4 +253,3 @@ void window_rename(window_t *window, char const *title) {
 gl_proc_t *window_proc_address(char const *name) {
     return glXGetProcAddress((GLubyte const *)name);
 }
-

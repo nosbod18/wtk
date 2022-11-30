@@ -1,8 +1,7 @@
 #define GL_SILENCE_DEPRECATION
-#import "../window.h"
-#import "../extern/log/log.h"
+#import "window.h"
+#import "log/log.h"
 #import <Cocoa/Cocoa.h>
-#import <stdbool.h>
 
 // Forward declaration
 typedef struct window_cocoa_t window_cocoa_t;
@@ -159,7 +158,7 @@ static void postOtherEvent(WndWindow *window, WndEventType type) {
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
     // WndSetWindowShouldClose must come first since the user may decide to cancel the close request when they handle the event
-    WndSetWindowShouldClose(m_window, true);
+    WndSetWindowShouldClose(m_window, 1);
     postOtherEvent(m_window, WndEventType_WindowClose);
     return NO;
 }
@@ -229,7 +228,7 @@ bool platform_init(void) {
     _wnd.delegate = [[AppDelegate alloc] init];
     if (!_wnd.delegate) {
         error("Failed to initialize _wnd.delegate");
-        return false;
+        return 0;
     }
 
     [NSApp setDelegate:_wnd.delegate];
@@ -238,10 +237,10 @@ bool platform_init(void) {
     _wnd.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
     if (!_wnd.bundle) {
         error("Failed to locate OpenGL framework");
-        return false;
+        return 0;
     }
 
-    return true;
+    return 1;
 
     } // autoreleasepool
 }
@@ -255,11 +254,11 @@ void platform_fini(void) {
     } // autoreleasepool
 }
 
-bool window_init(window_t *window) {
+int window_init(window_t *window) {
     @autoreleasepool {
 
     if (!window)
-        return false;
+        return 0;
 
     if (!window->title) window->title   = "";
     if (!window->w)     window->w       = 640;
@@ -269,7 +268,7 @@ bool window_init(window_t *window) {
 
     if (!native) {
         error("Failed to allocate native window");
-        return false;
+        return 0;
     }
 
     native->window = [[NSWindow alloc]
@@ -281,7 +280,7 @@ bool window_init(window_t *window) {
 
     if (!native->window) {
         error("Failed to create NSWindow");
-        return false;
+        return 0;
     }
 
     [native->window setAcceptsMouseMovedEvents:YES];
@@ -294,14 +293,14 @@ bool window_init(window_t *window) {
 
     if (!native->view) {
         error("Failed to create native->view");
-        return false;
+        return 0;
     }
 
     [native->window setContentView:native->view];
     [native->window setDelegate:native->view];
     [native->window makeFirstResponder:native->view];
 
-    return true;
+    return 1;
 
     } // autoreleasepool
 }
@@ -346,7 +345,7 @@ void window_swap_buffers(window_t window) {
 bool window_poll_events(window_callback_t *callback) {
     @autoreleasepool {
 
-    while (true) {
+    while (1) {
         NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];
         if (!event)
             break;

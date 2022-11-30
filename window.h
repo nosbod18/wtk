@@ -1,5 +1,4 @@
 #pragma once
-#include <stdbool.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Enums
@@ -58,12 +57,13 @@ typedef struct window_t {
     void *native;
 } window_t;
 
+// TODO: Rename
 typedef void gl_proc_t(void);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Prototypes
 
-bool        window_init         (window_t *window);
+int         window_init         (window_t *window);
 void        window_fini         (window_t  window);
 
 void        window_make_current (window_t  window);

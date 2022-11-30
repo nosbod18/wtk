@@ -1,25 +1,35 @@
-#if defined(__APPLE__) && defined(__OBJC__) 
-
 #define GL_SILENCE_DEPRECATION
-#import "wnd/wnd.h"
-#import "platform.h"
-#import "plugins/log/log.h"
+#import "../window.h"
+#import "../extern/log/log.h"
 #import <Cocoa/Cocoa.h>
 #import <stdbool.h>
+
+// Forward declaration
+typedef struct window_cocoa_t window_cocoa_t;
+
+@interface delegate_t : NSObject <NSApplicationDelegate>
+@end
+
+@interface view_t : NSOpenGLView <NSWindowDelegate>
+- (id)initWithFrame:(NSRect)frame window:(window_cocoa_t *)window;
+@end
+
+struct window_cocoa_t {
+    NSWindow *window;
+    view_t *view;
+};
+
+static struct {
+    delegate_t *delegate;
+    CFBundleRef bundle;
+    int nwindows;
+} _wnd = {0};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper functions ///////////////////////////////////////////////////////////
 
 static float translateYCoordinate(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
-}
-
-static int translateKeyCode(int keyCode) {
-    return keyCode; // TODO
-}
-
-static int translateModifiers(int mods) {
-    return mods; // TODO
 }
 
 static void postKeyEvent(WndWindow *window, WndEventType type, NSEvent const *event) {
@@ -31,7 +41,7 @@ static void postKeyEvent(WndWindow *window, WndEventType type, NSEvent const *ev
         .time = [event timestamp],
         .location = {
             .x = [event locationInWindow].x,
-            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+            .y = [native->view frame].size.height - [event locationInWindow].y,
         },
         .key = translateKeyCode([event keyCode]),
         .sym = [event keyCode],
@@ -49,7 +59,7 @@ static void postButtonEvent(WndWindow *window, WndEventType type, NSEvent const 
         .time = [event timestamp],
         .location = {
             .x = [event locationInWindow].x,
-            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+            .y = [native->view frame].size.height - [event locationInWindow].y,
         },
         .button = [event buttonNumber],
         .sym = [event buttonNumber],
@@ -66,7 +76,7 @@ static void postMotionOrScrollEvent(WndWindow *window, WndEventType type, NSEven
         .time = [event timestamp],
         .location = {
             .x = [event locationInWindow].x,
-            .y = [window->cocoa.view frame].size.height - [event locationInWindow].y,
+            .y = [native->view frame].size.height - [event locationInWindow].y,
         },
         .mods = translateModifiers([event modifierFlags]),
         .delta = {
@@ -110,8 +120,10 @@ static void postOtherEvent(WndWindow *window, WndEventType type) {
 }
 @end
 
-@implementation ContentView
-- (id)initWithFrame:(NSRect)frame window:(WndWindow *)window {
+@implementation view_t {
+    window_cocoa_t *m_window;
+}
+- (id)initWithFrame:(NSRect)frame window:(window_cocoa_t *)window {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFAOpenGLProfile,   NSOpenGLProfileVersion4_1Core,
         NSOpenGLPFAMultisample,
@@ -209,22 +221,22 @@ static void postOtherEvent(WndWindow *window, WndEventType type) {
 ///////////////////////////////////////////////////////////////////////////////
 // Platform functions /////////////////////////////////////////////////////////
 
-bool platformStart(void) {
+bool platform_init(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
 
-    _wnd.cocoa.appDelegate = [[AppDelegate alloc] init];
-    if (!_wnd.cocoa.appDelegate) {
-        error("Failed to initialize AppDelegate");
+    _wnd.delegate = [[AppDelegate alloc] init];
+    if (!_wnd.delegate) {
+        error("Failed to initialize _wnd.delegate");
         return false;
     }
 
-    [NSApp setDelegate:_wnd.cocoa.appDelegate];
+    [NSApp setDelegate:_wnd.delegate];
     [NSApp finishLaunching];
 
-    _wnd.cocoa.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
-    if (!_wnd.cocoa.bundle) {
+    _wnd.bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
+    if (!_wnd.bundle) {
         error("Failed to locate OpenGL framework");
         return false;
     }
@@ -234,105 +246,104 @@ bool platformStart(void) {
     } // autoreleasepool
 }
 
-void platformStop(void) {
+void platform_fini(void) {
     @autoreleasepool {
 
     [NSApp terminate:nil];
-    [_wnd.cocoa.appDelegate release];
+    [_wnd.delegate release];
 
     } // autoreleasepool
 }
 
-bool platformCreateWindow(WndWindow *window) {
+bool window_init(window_t *window) {
     @autoreleasepool {
 
-    window->cocoa.window = [[NSWindow alloc]
-                                initWithContentRect:NSMakeRect(0, 0, window->w, window->h)
-                                          styleMask:NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
-                                            backing:NSBackingStoreBuffered
-                                              defer:NO];
-    if (!window->cocoa.window) {
+    if (!window)
+        return false;
+
+    if (!window->title) window->title   = "";
+    if (!window->w)     window->w       = 640;
+    if (!window->h)     window->h       = 480;
+
+    window_cocoa_t *native = calloc(1, sizeof *native);
+
+    if (!native) {
+        error("Failed to allocate native window");
+        return false;
+    }
+
+    native->window = [[NSWindow alloc]
+        initWithContentRect:NSMakeRect(0, 0, window->w, window->h)
+        styleMask:          NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable
+        backing:            NSBackingStoreBuffered
+        defer:              NO
+    ];
+
+    if (!native->window) {
         error("Failed to create NSWindow");
         return false;
     }
 
-    [window->cocoa.window setAcceptsMouseMovedEvents:YES];
-    [window->cocoa.window setRestorable:NO];
-    [window->cocoa.window center];
-    [window->cocoa.window makeKeyAndOrderFront:nil];
-    [window->cocoa.window orderFront:nil];
+    [native->window setAcceptsMouseMovedEvents:YES];
+    [native->window setRestorable:NO];
+    [native->window center];
+    [native->window makeKeyAndOrderFront:nil];
+    [native->window orderFront:nil];
 
-    return true;
+    native->view = [[view_t alloc] initWithFrame:NSMakeRect(0, 0, window->w, window->h) window:native];
 
-    } // autoreleasepool
-}
-
-void platformDeleteWindow(WndWindow *window) {
-    @autoreleasepool {
-
-    if (!window->cocoa.window)
-        return;
-
-    [window->cocoa.window close];
-    window->cocoa.window = nil;
-
-    } // autoreleasepool
-}
-
-bool platformCreateContext(WndWindow *window, WndWindowDesc const *desc) {
-    @autoreleasepool {
-    (void)desc; // TODO
-
-    window->cocoa.view = [[ContentView alloc] initWithFrame:NSMakeRect(0, 0, window->w, window->h) window:window];
-    if (!window->cocoa.view) {
-        error("Failed to create ContentView");
+    if (!native->view) {
+        error("Failed to create native->view");
         return false;
     }
 
-    [window->cocoa.window setContentView:window->cocoa.view];
-    [window->cocoa.window setDelegate:window->cocoa.view];
-    [window->cocoa.window makeFirstResponder:window->cocoa.view];
+    [native->window setContentView:native->view];
+    [native->window setDelegate:native->view];
+    [native->window makeFirstResponder:native->view];
 
     return true;
 
     } // autoreleasepool
 }
 
-void platformDeleteContext(WndWindow *window) {
+void window_fini(window_t window) {
     @autoreleasepool {
 
-    if (!window->cocoa.view)
+    window_cocoa_t *native = window.native;
+
+    if (!native)
         return;
 
-    if (window->cocoa.window)
-        [window->cocoa.window setDelegate:nil];
-
-    [window->cocoa.view release];
-    window->cocoa.view = nil;
+    if (native->window) {
+        if (native->view) {
+            [native->view release];
+            native->view = nil;
+        }
+        [native->window setDelegate:nil];
+        [native->window close];
+        native->window = nil;
+    }
 
     } // autoreleasepool
 }
 
-void platformMakeCurrent(WndWindow const *window) {
+void window_make_current(window_t window) {
     @autoreleasepool {
 
-    if (window)
-        [[window->cocoa.view openGLContext] makeCurrentContext];
-    else
-        [NSOpenGLContext clearCurrentContext];
+    [[((window_cocoa_t *)native)->view openGLContext] makeCurrentContext];
 
     } // autoreleasepool
 }
 
-void platformSwapBuffers(WndWindow const *window) {
+void window_swap_buffers(window_t window) {
     @autoreleasepool {
 
-    [[window->cocoa.view openGLContext] flushBuffer];
+    [[((window_cocoa_t *)native)->view openGLContext] flushBuffer];
 
     } // autoreleasepool
 }
 
-void platformPollEvents(void) {
+bool window_poll_events(window_callback_t *callback) {
     @autoreleasepool {
 
     while (true) {
@@ -340,46 +351,74 @@ void platformPollEvents(void) {
         if (!event)
             break;
 
-        [NSApp sendEvent:event];
+        switch ([event type]) {
+            case NSEventTypeKeyDown:
+            case NSEventTypeKeyUp: {
+                _wnd.closed = callback([event type] == NSEventTypeKeyDown ? EVENTTYPE_KEYDOWN : EVENTTYPE_KEYUP, &(window_event_t){
+                    .key.code = [event keyCode],
+                    .key.sym  = [event keyCode],
+                    .key.mods = [event modifierFlags],
+                    .key.x    = [event locationInWindow].x,
+                    .key.y    = [event locationInWindow].y,
+                });
+            } break;
+
+            // TODO: Others
+
+            default: {
+                [NSApp sendEvent:event];
+            } break;
+        }
     }
 
-    } // autoreleasepool
-}
-
-void platformSetWindowPos(WndWindow *window, int x, int y) {
-    @autoreleasepool {
-
-    NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [window->cocoa.view frame].size.height - 1), 0, 0);
-    NSRect frame = [window->cocoa.window frameRectForContentRect:rect];
-    [window->cocoa.window setFrameOrigin:frame.origin];
+    return _wnd.closed;
 
     } // autoreleasepool
 }
 
-void platformSetWindowSize(WndWindow *window, int w, int h) {
+void window_set_pos(window_t *window, int x, int y) {
     @autoreleasepool {
 
-    NSRect contentRect = [window->cocoa.window contentRectForFrameRect:[window->cocoa.window frame]];
+    window_cocoa_t *native = window->native;
+    NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [native->view frame].size.height - 1), 0, 0);
+    NSRect frame = [native->window frameRectForContentRect:rect];
+    [native->window setFrameOrigin:frame.origin];
+
+    window->x = x;
+    window->y = y;
+
+    } // autoreleasepool
+}
+
+void window_set_size(window_t *window, int w, int h) {
+    @autoreleasepool {
+
+    window_cocoa_t *native = window.native;
+    NSRect contentRect = [native->window contentRectForFrameRect:[native->window frame]];
     contentRect.origin.y += contentRect.size.height - h;
     contentRect.size = NSMakeSize(w, h);
-    [window->cocoa.window setFrame:[window->cocoa.window frameRectForContentRect:contentRect] display:YES];
+    [native->window setFrame:[native->window frameRectForContentRect:contentRect] display:YES];
+
+    window->w = w;
+    window->h = h;
 
     } // autoreleasepool
 }
 
-void platformSetWindowTitle(WndWindow *window, char const *title) {
+void window_set_title(WndWindow *window, char const *title) {
     @autoreleasepool {
 
-    [window->cocoa.window setTitle:@(title)];
+    window_cocoa_t *native = window.native;
+    [native->window setTitle:@(title)];
+
+    window->title = title;
 
     } // autoreleasepool
 }
 
-WndGLProc *platformGetProcAddress(char const *name) {
-    CFStringRef symbolName = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
-    WndGLProc *symbol = CFBundleGetFunctionPointerForName(_wnd.cocoa.bundle, symbolName);
-    CFRelease(symbolName);
+gl_proc_t *window_proc_address(char const *name) {
+    CFStringRef symbol_name = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
+    gl_proc_t *symbol = CFBundleGetFunctionPointerForName(_wnd.bundle, symbol_name);
+    CFRelease(symbol_name);
     return symbol;
 }
-
-#endif // __APPLE__ && __OBJC__

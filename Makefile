@@ -3,7 +3,7 @@ MAKEFLAGS += -r
 .SECONDEXPANSION:
 .RECIPEPREFIX := >
 
-OS        ?= $(shell uname -s)
+OS        := $(if $(OS),win32,$(subst Darwin,macos,$(shell uname -s | tr [A-Z] [a-z])))
 ARCH      ?= $(shell uname -m)
 MODE      ?= debug
 BUILD     ?= .build/$(OS)-$(ARCH)-$(MODE)/

@@ -1,4 +1,4 @@
-#include "wnd/wnd.h"
+#include "../window.h"
 
 #define GLAD_GL_IMPLEMENTATION
 #include "glad.h"
@@ -14,26 +14,28 @@ static struct {
 
 static char const *vsSource =
     "#version 330\n"
-    "layout(location = 0) in vec2 aPosition;\n"
-    "layout(location = 1) in vec3 aColor;\n"
-    "out vec4 vColor;\n"
+    "layout(location = 0) in vec2 a_pos;\n"
+    "layout(location = 1) in vec3 a_color;\n"
+    "out vec4 v_color;\n"
     "void main() {\n"
-    "    gl_Position = vec4(aPosition, 0.0, 1.0);\n"
-    "    vColor = vec4(aColor, 1.0);\n"
+    "    gl_Position = vec4(a_pos, 0.0, 1.0);\n"
+    "    v_color = vec4(a_color, 1.0);\n"
     "}";
 
 static char const *fsSource =
     "#version 330\n"
-    "in vec4 vColor;\n"
-    "out vec4 fColor;\n"
+    "in vec4 v_color;\n"
+    "out vec4 o_color;\n"
     "void main() {\n"
-    "    fColor = vColor;\n"
+    "    o_color = v_color;\n"
     "}";
 
 int main(void) {
-    WndWindow *window = WndCreateWindow(&(WndWindowDesc){0});
-    WndMakeCurrent(window);
-    gladLoadGL(WndGetProcAddress);
+    window_t window = {0};
+
+    window_init(&window);
+    window_make_current(window);
+    gladLoadGL(window_proc_address);
 
     unsigned vao;
     glGenVertexArrays(1, &vao);
@@ -45,8 +47,8 @@ int main(void) {
     glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)0);
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)(2 * sizeof(float)));
 
     unsigned vs = glCreateShader(GL_VERTEX_SHADER);
@@ -62,15 +64,15 @@ int main(void) {
     glAttachShader(program, fs);
     glLinkProgram(program);
 
-    while (!WndGetWindowShouldClose(window)) {
+    while (!window.closed) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(vao);
         glUseProgram(program);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        WndSwapBuffers(window);
-        WndPollEvents();
+        window_swap_buffers(window);
+        window_poll_events(&window);
     }
 
     glDeleteProgram(program);
@@ -79,5 +81,5 @@ int main(void) {
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
 
-    WndDeleteWindow(window);
+    window_fini(window);
 }

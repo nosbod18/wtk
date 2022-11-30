@@ -1,3 +1,6 @@
 [submodule "source/plugins/log"]
 	path = source/plugins/log
 	url = https://www.github.com/nosbod18/log
+[submodule "extern/log"]
+	path = extern/log
+	url = https://www.github.com/nosbod18/log

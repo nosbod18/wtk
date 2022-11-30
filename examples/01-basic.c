@@ -1,4 +1,4 @@
-#include "../window.h"
+#include "window.h"
 
 int main(void) {
     window_t window = {0};

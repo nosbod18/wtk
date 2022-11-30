@@ -1,4 +1,4 @@
-#include "../window.h"
+#include "window.h"
 #include <stdio.h>
 
 void event(window_t *window, int type, window_event_t const *event) {

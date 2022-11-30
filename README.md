@@ -1,20 +1,25 @@
 # Window
-A C99 OpenGL window library
 
 ## Building
 ### MacOS and Linux
-#### `$ make`
-- Builds the library and the examples.
+Build the library and the examples:
+```bash
+$ make
+```
 
-#### `$ make libwindow.a`
-- Builds only the library.
+Build just the library:
+```bash
+$ make libwindow.a
+```
 
-#### `$ make run-{example file without extension}`
-- Runs an example, e.g. `make run-01-basic` compiles and runs `examples/01-basic.c`.
-- Execute `./.build/$(OS)-$(ARCH)-$(MODE)/bin/{example file without extension}` if you don't want to use `make run`. See the `Makefile` for what `$(OS)`, `$(ARCH)`, and `$(MODE)` are.
+Run an example:
+```bash
+$ make run-{example file without extension}
+```
+- e.g. `$ make run-01-basic` to compile and run `examples/01-basic.c`.
 
 ### Windows
-Currently cannot build on Windows
+Currently doesn't support Windows
 
 ## Example
 ```c

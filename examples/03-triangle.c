@@ -1,4 +1,4 @@
-#include "../window.h"
+#include "window.h"
 
 #define GLAD_GL_IMPLEMENTATION
 #include "glad.h"
@@ -12,7 +12,7 @@ static struct {
     {  0.0f,  0.5f, 0.0f, 0.0f, 1.0f }
 };
 
-static char const *vsSource =
+static char const *vs_source =
     "#version 330\n"
     "layout(location = 0) in vec2 a_pos;\n"
     "layout(location = 1) in vec3 a_color;\n"
@@ -22,7 +22,7 @@ static char const *vsSource =
     "    v_color = vec4(a_color, 1.0);\n"
     "}";
 
-static char const *fsSource =
+static char const *fs_source =
     "#version 330\n"
     "in vec4 v_color;\n"
     "out vec4 o_color;\n"
@@ -52,11 +52,11 @@ int main(void) {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof *vertices, (void *)(2 * sizeof(float)));
 
     unsigned vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vsSource, 0);
+    glShaderSource(vs, 1, &vs_source, 0);
     glCompileShader(vs);
 
     unsigned fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fsSource, 0);
+    glShaderSource(fs, 1, &fs_source, 0);
     glCompileShader(fs);
 
     unsigned program = glCreateProgram();

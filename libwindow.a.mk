@@ -1,5 +1,6 @@
 sources  := source/$(OS).?
-includes := . external
+includes := external
+INCLUDES := .
 cflags   := -std=c99 -Wall -Wextra -Wpedantic
 
 ifeq ($(OS),macos)

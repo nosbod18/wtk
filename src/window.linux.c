@@ -1,12 +1,11 @@
-#include "window.h"
-#include "log/log.h"
+#include "../window.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <GL/glx.h>
 
-#include <stdbool.h>
 #include <stdlib.h> // malloc, free
+#include <stdio.h>
 
 typedef GLXContext glXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
 
@@ -26,7 +25,7 @@ static struct {
     int screen;
     int depth;
     int nwindows;
-} _wnd = {0};
+} G = {0};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Platform functions /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,36 +34,30 @@ static void default_event_callback(window_t *window, int type, window_event_t co
     (void)window; (void)type; (void)event;
 }
 
-static int platform_init(void) {
-    if (!(_wnd.display = XOpenDisplay(NULL))) {
-        error("Failed to open X display");
+static int platform_start(void) {
+    if (!(G.display = XOpenDisplay(NULL)))
         return 0;
-    }
 
-    _wnd.screen = DefaultScreen(_wnd.display);
-    _wnd.root = RootWindow(_wnd.display, _wnd.screen);
-    _wnd.visual = DefaultVisual(_wnd.display, _wnd.screen);
+    G.screen = DefaultScreen(G.display);
+    G.root = RootWindow(G.display, G.screen);
+    G.visual = DefaultVisual(G.display, G.screen);
 
-    if (!(_wnd.colormap = XCreateColormap(_wnd.display, _wnd.root, _wnd.visual, AllocNone))) {
-        error("Failed to create colormap");
+    if (!(G.colormap = XCreateColormap(G.display, G.root, G.visual, AllocNone)))
         return 0;
-    }
 
-    _wnd.depth = DefaultDepth(_wnd.display, _wnd.screen);
+    G.depth = DefaultDepth(G.display, G.screen);
 
-    if (!(_wnd.wm_delwin = XInternAtom(_wnd.display, "WM_DELETE_WINDOW", 0))) {
-        error("Failed to intern WM_DELETE_WINDOW atom");
+    if (!(G.wm_delwin = XInternAtom(G.display, "WM_DELETE_WINDOW", 0)))
         return 0;
-    }
 
-    _wnd.glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
+    G.glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
 
     return 1;
 }
 
-static void platform_fini(void) {
-    XFreeColormap(_wnd.display, _wnd.colormap);
-    XCloseDisplay(_wnd.display);
+static void platform_stop(void) {
+    XFreeColormap(G.display, G.colormap);
+    XCloseDisplay(G.display);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,38 +72,32 @@ int window_init(window_t *window) {
     if (!window->w)         window->w = 640;
     if (!window->h)         window->h = 480;
 
-    if (_wnd.nwindows == 0) {
-        if (!platform_init())
+    if (G.nwindows == 0) {
+        if (!platform_start())
             return 0;
     }
 
     window_x11_t *native = malloc(sizeof *native);
-    if (!window) {
-        error("Failed to allocate window");
+    if (!window)
         return 0;
-    }
 
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
-        .colormap = _wnd.colormap
+        .colormap = G.colormap
     };
 
     native->window = XCreateWindow(
-        _wnd.display, _wnd.root,
+        G.display, G.root,
         0, 0, window->w, window->h,
-        0, _wnd.depth, InputOutput,
-        _wnd.visual, CWColormap | CWEventMask, &swa
+        0, G.depth, InputOutput,
+        G.visual, CWColormap | CWEventMask, &swa
     );
 
-    if (!native->window) {
-        error("Failed to create X11 window");
+    if (!native->window)
         return 0;
-    }
 
-    if (!XSetWMProtocols(_wnd.display, native->window, &_wnd.wm_delwin, 1)) {
-        error("Failed to set window manager protocols");
+    if (!XSetWMProtocols(G.display, native->window, &G.wm_delwin, 1))
         return 0;
-    }
 
     GLint visualAttribs[] = {
         GLX_RENDER_TYPE,  GLX_RGBA_BIT,
@@ -119,12 +106,9 @@ int window_init(window_t *window) {
     };
 
     int fbcount = 0;
-    GLXFBConfig *fbc = glXChooseFBConfig(_wnd.display, _wnd.screen, visualAttribs, &fbcount);
-
-    if (!fbc || !fbcount) {
-        error("Failed to find suitable a framebuffer config");
+    GLXFBConfig *fbc = glXChooseFBConfig(G.display, G.screen, visualAttribs, &fbcount);
+    if (!fbc || !fbcount)
         return 0;
-    }
 
     GLint contextAttribs[] = {
         GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
@@ -133,18 +117,16 @@ int window_init(window_t *window) {
         None
     };
 
-    if (!_wnd.glXCreateContextAttribsARB) {
-        error("Could not use glXCreateContextAttribsARB, expect the wrong version of OpenGL");
-        native->context = glXCreateNewContext(_wnd.display, fbc[0], GLX_RGBA_TYPE, NULL, 1);
-    } else {
-        native->context = _wnd.glXCreateContextAttribsARB(_wnd.display, fbc[0], NULL, 1, contextAttribs);
-    }
+    if (G.glXCreateContextAttribsARB)
+        native->context = G.glXCreateContextAttribsARB(G.display, fbc[0], NULL, 1, contextAttribs);
+    else
+        native->context = glXCreateNewContext(G.display, fbc[0], GLX_RGBA_TYPE, NULL, 1);
 
-    XMapWindow(_wnd.display, native->window);
-    XFlush(_wnd.display);
+    XMapWindow(G.display, native->window);
+    XFlush(G.display);
 
     window->native = native;
-    _wnd.nwindows++;
+    G.nwindows++;
     return 1;
 }
 
@@ -154,41 +136,42 @@ void window_fini(window_t window) {
     if (!native)
         return;
 
-    glXDestroyContext(_wnd.display, native->context);
-    XDestroyWindow(_wnd.display, native->window);
+    glXDestroyContext(G.display, native->context);
+    XDestroyWindow(G.display, native->window);
     free(native);
 
-    _wnd.nwindows--;
-    if (_wnd.nwindows == 0)
-        platform_fini();
+    G.nwindows--;
+    if (G.nwindows == 0)
+        platform_stop();
 }
 
 void window_make_current(window_t window) {
     window_x11_t *native = window.native;
-    glXMakeContextCurrent(_wnd.display, native->window, native->window, native->context);
+    glXMakeContextCurrent(G.display, native->window, native->window, native->context);
 }
 
 void window_swap_buffers(window_t window) {
-    glXSwapBuffers(_wnd.display, ((window_x11_t *)window.native)->window);
+    glXSwapBuffers(G.display, ((window_x11_t *)window.native)->window);
 }
 
 void window_poll_events(window_t *window) {
     XEvent event;
 
-    while (XPending(_wnd.display)) {
-        XNextEvent(_wnd.display, &event);
+    while (XPending(G.display)) {
+        XNextEvent(G.display, &event);
         switch (event.type) {
             case ConfigureNotify: {
+                // TODO: WINDOWEVENT_MOVE or something like that
                 window->w = event.xconfigure.width;
                 window->h = event.xconfigure.height;
                 window->x = event.xconfigure.x;
                 window->y = event.xconfigure.y;
-                window->callback(window, EVENTTYPE_WINDOWRESIZE, &(window_event_t){0});
+                window->callback(window, WINDOWEVENT_RESIZE, &(window_event_t){0});
             } break;
 
             case KeyPress:
             case KeyRelease: {
-                window->callback(window, event.type == KeyPress ? EVENTTYPE_KEYDOWN : EVENTTYPE_KEYUP, &(window_event_t){
+                window->callback(window, event.type == KeyPress ? WINDOWEVENT_KEYDOWN : WINDOWEVENT_KEYUP, &(window_event_t){
                     .key.code = event.xkey.keycode,
                     .key.sym  = event.xkey.keycode,
                     .key.mods = event.xkey.state,
@@ -199,7 +182,7 @@ void window_poll_events(window_t *window) {
 
             case ButtonPress:
             case ButtonRelease: {
-                window->callback(window, event.type == ButtonPress ? EVENTTYPE_MOUSEDOWN : EVENTTYPE_MOUSEUP, &(window_event_t){
+                window->callback(window, event.type == ButtonPress ? WINDOWEVENT_MOUSEDOWN : WINDOWEVENT_MOUSEUP, &(window_event_t){
                     .button.code = event.xbutton.button,
                     .button.sym  = event.xbutton.button,
                     .button.mods = event.xbutton.state,
@@ -209,23 +192,23 @@ void window_poll_events(window_t *window) {
             } break;
 
             case MotionNotify: {
-                window->callback(window, EVENTTYPE_MOUSEMOTION, &(window_event_t){
+                window->callback(window, WINDOWEVENT_MOUSEMOTION, &(window_event_t){
                     .motion.dx = event.xmotion.x,
                     .motion.dy = event.xmotion.y,
                 });
             } break;
 
             case ClientMessage: {
-                if ((Atom)event.xclient.data.l[0] == _wnd.wm_delwin) {
+                if ((Atom)event.xclient.data.l[0] == G.wm_delwin) {
                     window->closed = 1; // Must come before window->callback()
-                    window->callback(window, EVENTTYPE_WINDOWCLOSE, &(window_event_t){0});
+                    window->callback(window, WINDOWEVENT_CLOSE, &(window_event_t){0});
                 }
             } break;
 
-            case MapNotify:   { window->callback(window, EVENTTYPE_WINDOWFOCUSIN, &(window_event_t){0});  } break;
-            case UnmapNotify: { window->callback(window, EVENTTYPE_WINDOWFOCUSOUT, &(window_event_t){0}); } break;
-            case EnterNotify: { window->callback(window, EVENTTYPE_MOUSEENTER, &(window_event_t){0});     } break;
-            case LeaveNotify: { window->callback(window, EVENTTYPE_MOUSELEAVE, &(window_event_t){0});     } break;
+            case MapNotify:   { window->callback(window, WINDOWEVENT_FOCUSIN, &(window_event_t){0});    } break;
+            case UnmapNotify: { window->callback(window, WINDOWEVENT_FOCUSOUT, &(window_event_t){0});   } break;
+            case EnterNotify: { window->callback(window, WINDOWEVENT_MOUSEENTER, &(window_event_t){0}); } break;
+            case LeaveNotify: { window->callback(window, WINDOWEVENT_MOUSELEAVE, &(window_event_t){0}); } break;
 
             default: {
             } break;
@@ -234,19 +217,19 @@ void window_poll_events(window_t *window) {
 }
 
 void window_move(window_t *window, int x, int y) {
-    XMoveWindow(_wnd.display, ((window_x11_t *)window->native)->window, x, y);
+    XMoveWindow(G.display, ((window_x11_t *)window->native)->window, x, y);
     window->x = x;
     window->y = y;
 }
 
 void window_resize(window_t *window, int w, int h) {
-    XResizeWindow(_wnd.display, ((window_x11_t *)window->native)->window, (unsigned int)w, (unsigned int)h);
+    XResizeWindow(G.display, ((window_x11_t *)window->native)->window, (unsigned int)w, (unsigned int)h);
     window->w = w;
     window->h = h;
 }
 
 void window_rename(window_t *window, char const *title) {
-    XStoreName(_wnd.display, ((window_x11_t *)window->native)->window, title);
+    XStoreName(G.display, ((window_x11_t *)window->native)->window, title);
     window->title = title;
 }
 

@@ -1,32 +1,25 @@
 # Window
 
-## Building
-### MacOS and Linux
-Build the library and the examples:
+## Using
+Simply drop the 3 files into your project. Use
 ```bash
-$ make
+$ wget https://raw.githubusercontent.com/nosbod18/window/source/{window.h,window.linux.c,window.macos.m} {destination}
 ```
-
-Build just the library:
-```bash
-$ make libwindow.a
-```
-
-Run an example:
-```bash
-$ make run-{example file without extension}
-```
-- e.g. `$ make run-01-basic` to compile and run `examples/01-basic.c`.
-
-### Windows
-Currently doesn't support Windows
 
 ## Example
 ```c
 #include "window/window.h"
 
+void callback(window_t *window, int type, window_event_t const *event) {
+    if (type == WINDOWEVENT_KEYDOWN && event->key.code == KEY_ESCAPE)
+        window->closed = 1;
+}
+
 int main(void) {
-    window_t window = {0};
+    window_t window = {
+        .title = "Window Test",
+        .callback = callback
+    };
 
     window_init(&window);
     window_make_current(window);
@@ -39,5 +32,3 @@ int main(void) {
     window_fini(window);
 }
 ```
-
-See the [examples](https://www.github.com/nosbod18/window/tree/main/examples) directory for more

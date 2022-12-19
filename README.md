@@ -1,6 +1,7 @@
-# Window
+# wtk
 
-## Example
+A small, simple, cross-platform window and OpenGL context library
+
 ```c
 #include "wtk/wtk.h"
 
@@ -11,7 +12,7 @@ void callback(wtk_window_t *window, int type, wtk_event_t const *event) {
 
 int main(void) {
     wtk_window_t window = {
-        .title = "Window Test",
+        .title = "Callback Test",
         .callback = callback
     };
 

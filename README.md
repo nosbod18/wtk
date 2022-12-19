@@ -1,11 +1,5 @@
 # Window
 
-## Using
-Simply drop the 3 files into your project. Use
-```bash
-$ wget https://raw.githubusercontent.com/nosbod18/window/source/{window.h,window.linux.c,window.macos.m} {destination}
-```
-
 ## Example
 ```c
 #include "wtk/wtk.h"

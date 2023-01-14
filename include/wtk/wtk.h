@@ -1,9 +1,6 @@
 #pragma once
 #include <stdbool.h>
 
-///////////////////////////////////////////////////////////////////////////////
-// Types
-
 typedef enum WtkEventType {
     WtkEventType_KeyUp,
     WtkEventType_KeyDown,
@@ -60,8 +57,6 @@ typedef struct WtkWindowDesc {
     int x, y, w, h;
 } WtkWindowDesc;
 
-///////////////////////////////////////////////////////////////////////////////
-// Functions
 
 WtkWindow  *WtkCreateWindow         (WtkWindowDesc const *desc);
 void        WtkMakeCurrent          (WtkWindow *window);

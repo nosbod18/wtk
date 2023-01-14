@@ -5,11 +5,6 @@ A small, simple, cross-platform window and OpenGL context library
 ```c
 #include "wtk/wtk.h"
 
-void handler(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
-    if (type == WtkEventType_KeyDown && event->key.code == WtkKey_Escape)
-        WtkSetWindowShouldClose(window, true);
-}
-
 int main(void) {
     WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){0});
     WtkMakeCurrent(window);

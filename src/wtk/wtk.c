@@ -2,6 +2,8 @@
 #include "platform/platform.h"
 #include <stdlib.h> // calloc, free
 
+static int g_num_windows = 0;
+
 static void defaultEventCallback(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
     (void)window; (void)type; (void)event;
 }
@@ -15,7 +17,7 @@ static void validateDesc(WtkWindow *window) {
 }
 
 WtkWindow *WtkCreateWindow(WtkWindowDesc const *desc) {
-    if (!desc || (_wtk.num_windows == 0 && !platformInit()))
+    if (!desc || (g_num_windows == 0 && !platformInit()))
         return NULL;
 
     WtkWindow *window = calloc(1, sizeof *window);
@@ -29,7 +31,7 @@ WtkWindow *WtkCreateWindow(WtkWindowDesc const *desc) {
         return NULL;
     }
 
-    _wtk.num_windows++;
+    g_num_windows++;
     return window;
 }
 
@@ -50,7 +52,7 @@ void WtkDeleteWindow(WtkWindow *window) {
 
     platformDeleteWindow(window);
     free(window);
-    if (--_wtk.num_windows == 0)
+    if (--g_num_windows == 0)
         platformTerminate();
 }
 

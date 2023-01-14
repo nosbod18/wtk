@@ -1,5 +1,18 @@
 #include "wtk/wtk.h"
 #include "platform.h"
+#include <X11/Xutil.h>
+
+typedef GLXContext GlXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
+
+static GlXCreateContextAttribsARBProc  *g_glx_create_ctx_attribs = 0;
+static Display                         *g_display = 0;
+static XContext                         g_context = {0};
+static Visual                          *g_visual = 0;
+static Window                           g_root = 0;
+static Colormap                         g_colormap = {0};
+static Atom                             g_wm_delwin = 0;
+static int                              g_screen = 0;
+static int                              g_depth = 0;
 
 static void postKeyOrButtonEvent(WtkWindow *window, WtkEventType type, XEvent const *event) {
     bool isKeyEvent = (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp);
@@ -25,46 +38,46 @@ static void postOtherEvent(WtkWindow *window, WtkEventType type) {
 }
 
 bool platformInit(void) {
-    if (!(_wtk.display = XOpenDisplay(NULL)))
+    if (!(g_display = XOpenDisplay(NULL)))
         return false;
 
-    _wtk.screen = DefaultScreen(_wtk.display);
-    _wtk.root   = RootWindow(_wtk.display, _wtk.screen);
-    _wtk.visual = DefaultVisual(_wtk.display, _wtk.screen);
+    g_screen = DefaultScreen(g_display);
+    g_root   = RootWindow(g_display, g_screen);
+    g_visual = DefaultVisual(g_display, g_screen);
 
-    if (!(_wtk.colormap = XCreateColormap(_wtk.display, _wtk.root, _wtk.visual, AllocNone)))
+    if (!(g_colormap = XCreateColormap(g_display, g_root, g_visual, AllocNone)))
         return false;
 
-    _wtk.depth = DefaultDepth(_wtk.display, _wtk.screen);
+    g_depth = DefaultDepth(g_display, g_screen);
 
-    if (!(_wtk.wm_delwin = XInternAtom(_wtk.display, "WM_DELETE_WINDOW", 0)))
+    if (!(g_wm_delwin = XInternAtom(g_display, "WM_DELETE_WINDOW", 0)))
         return false;
 
-    _wtk.glx_create_ctx_attribs = (GlXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glx_create_ctx_attribs");
+    g_glx_create_ctx_attribs = (GlXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glx_create_ctx_attribs");
 
     return true;
 }
 
 void platformTerminate(void) {
-    XFreeColormap(_wtk.display, _wtk.colormap);
-    XCloseDisplay(_wtk.display);
+    XFreeColormap(g_display, g_colormap);
+    XCloseDisplay(g_display);
 }
 
 bool platformCreateWindow(WtkWindow *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
-        .colormap = _wtk.colormap
+        .colormap = g_colormap
     };
 
     window->window = XCreateWindow(
-        _wtk.display, _wtk.root,
+        g_display, g_root,
         window->desc.x, window->desc.y, window->desc.w, window->desc.h,
-        0, _wtk.depth, InputOutput,
-        _wtk.visual, CWColormap | CWEventMask, &swa
+        0, g_depth, InputOutput,
+        g_visual, CWColormap | CWEventMask, &swa
     );
     if (!native->window) return false;
 
-    if (!XSetWMProtocols(_wtk.display, native->window, &_wtk.wm_delwin, 1))
+    if (!XSetWMProtocols(g_display, native->window, &g_wm_delwin, 1))
         return false;
 
     GLint vis_attribs[] = {
@@ -74,7 +87,7 @@ bool platformCreateWindow(WtkWindow *window) {
     };
 
     int fbcount = 0;
-    GLXFBConfig *fbc = glXChooseFBConfig(_wtk.display, _wtk.screen, vis_attribs, &fbcount);
+    GLXFBConfig *fbc = glXChooseFBConfig(g_display, g_screen, vis_attribs, &fbcount);
     if (!fbc || !fbcount) return false;
 
     GLint ctx_attribs[] = {
@@ -84,28 +97,28 @@ bool platformCreateWindow(WtkWindow *window) {
         None
     };
 
-    if (_wtk.glx_create_ctx_attribs)
-        native->context = _wtk.glx_create_ctx_attribs(_wtk.display, fbc[0], NULL, 1, ctx_attribs);
+    if (g_glx_create_ctx_attribs)
+        native->context = g_glx_create_ctx_attribs(g_display, fbc[0], NULL, 1, ctx_attribs);
     else
-        native->context = glXCreateNewContext(_wtk.display, fbc[0], GLX_RGBA_TYPE, NULL, 1);
+        native->context = glXCreateNewContext(g_display, fbc[0], GLX_RGBA_TYPE, NULL, 1);
 
-    XMapWindow(_wtk.display, native->window);
-    XFlush(_wtk.display);
+    XMapWindow(g_display, native->window);
+    XFlush(g_display);
     return true;
 }
 
 void platformMakeCurrent(WtkWindow *window) {
-    glXMakeContextCurrent(_wtk.display, window->window, window->window, window->context);
+    glXMakeContextCurrent(g_display, window->window, window->window, window->context);
 }
 
 void platformSwapBuffers(WtkWindow *window) {
-    glXSwapBuffers(_wtk.display, window->window);
+    glXSwapBuffers(g_display, window->window);
 }
 
 void platformPollEvents(void) {
     XEvent event;
-    while (XPending(_wtk.display)) {
-        XNextEvent(_wtk.display, &event);
+    while (XPending(g_display)) {
+        XNextEvent(g_display, &event);
         switch (event.type) {
             case KeyPress:      postKeyOrButtonEvent(window, WtkEventType_KeyDown, &event);         break;
             case KeyRelease:    postKeyOrButtonEvent(window, WtkEventType_KeyUp, &event);           break;
@@ -124,7 +137,7 @@ void platformPollEvents(void) {
                 postOtherEvent(window, WtkEventType_WindowResize);
             } break;
             case ClientMessage: {
-                if ((Atom)event.xclient.data.l[0] == _wtk.wm_delwin) {
+                if ((Atom)event.xclient.data.l[0] == g_wm_delwin) {
                     WtkSetWindowShouldClose(window, true);
                     postOtherEvent(window, WtkEventType_WindowClose);
                 }
@@ -134,18 +147,18 @@ void platformPollEvents(void) {
 }
 
 void platformDeleteWindow(WtkWindow *window) {
-    glXDestroyContext(_wtk.display, window->context);
-    XDestroyWindow(_wtk.display, window->window);
+    glXDestroyContext(g_display, window->context);
+    XDestroyWindow(g_display, window->window);
 }
 
 void platformSetWindowOrigin(WtkWindow *window, int x, int y) {
-    XMoveWindow(_wtk.display, window->window, x, y);
+    XMoveWindow(g_display, window->window, x, y);
 }
 
 void platformSetWindowSize(WtkWindow *window, int w, int h) {
-    XResizeWindow(_wtk.display, window->window, (unsigned int)w, (unsigned int)h);
+    XResizeWindow(g_display, window->window, (unsigned int)w, (unsigned int)h);
 }
 
 void platformSetWindowTitle(WtkWindow *window, char const *title) {
-    XStoreName(_wtk.display, window->window, title);
+    XStoreName(g_display, window->window, title);
 }

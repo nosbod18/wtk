@@ -1,6 +1,11 @@
 #import "wtk/wtk.h"
 #import "platform.h"
 
+@interface CocoaApp : NSObject <NSApplicationDelegate>
+@end
+
+static CocoaApp *g_app = nil;
+
 static void postKeyOrButtonEvent(WtkWindow *window, WtkEventType type, NSEvent *event) {
     bool isKeyEvent = (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp);
     window->desc.event_handler(window, type, &(WtkEvent){
@@ -95,9 +100,9 @@ bool platformInit(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
-    _wtk.app = [[CocoaApp alloc] init];
+    g_app = [[CocoaApp alloc] init];
 
-    [NSApp setDelegate:_wtk.app];
+    [NSApp setDelegate:g_app];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [NSApp activateIgnoringOtherApps:YES];
     [NSApp finishLaunching];
@@ -111,7 +116,7 @@ void platformTerminate(void) {
     @autoreleasepool {
 
     [NSApp terminate:nil];
-    [_wtk.app release];
+    [g_app release];
 
     }
 }

@@ -11,10 +11,7 @@ void handler(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
 }
 
 int main(void) {
-    WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){
-        .title = "My Title",
-        .event_handler = handler
-    });
+    WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){0});
     WtkMakeCurrent(window);
 
     while (!WtkGetWindowShouldClose(window)) {

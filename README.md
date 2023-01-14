@@ -5,25 +5,23 @@ A small, simple, cross-platform window and OpenGL context library
 ```c
 #include "wtk/wtk.h"
 
-void callback(wtk_window_t *window, int type, wtk_event_t const *event) {
-    if (type == WTK_EVENT_KEYDOWN && event->key.code == WTK_KEY_ESCAPE)
-        window->closed = 1;
+void handler(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
+    if (type == WtkEventType_KeyDown && event->key.code == WtkKey_Escape)
+        WtkSetWindowShouldClose(window, true);
 }
 
 int main(void) {
-    wtk_window_t window = {
-        .title = "Callback Test",
-        .callback = callback
-    };
+    WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){
+        .title = "My Title",
+        .event_handler = handler
+    });
+    WtkMakeCurrent(window);
 
-    wtk_open_window(&window);
-    wtk_make_current(window);
-
-    while (!window.closed) {
-        wtk_swap_buffers(window);
-        wtk_poll_events(&window);
+    while (!WtkGetWindowShouldClose(window)) {
+        WtkSwapBuffers(window);
+        WtkPollEvents();
     }
 
-    wtk_close_window(window);
+    WtkDeleteWindow(window);
 }
 ```

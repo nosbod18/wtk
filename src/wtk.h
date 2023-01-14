@@ -1,73 +1,78 @@
 #pragma once
+#include <stdbool.h>
 
 ///////////////////////////////////////////////////////////////////////////////
-// Enums
+// Types
 
-enum {
-    WTK_EVENT_CLOSE,
-    WTK_EVENT_RESIZE,
-    WTK_EVENT_FOCUSIN,
-    WTK_EVENT_FOCUSOUT,
-    WTK_EVENT_KEYUP,
-    WTK_EVENT_KEYDOWN,
-    WTK_EVENT_MOUSEUP,
-    WTK_EVENT_MOUSEDOWN,
-    WTK_EVENT_MOUSEENTER,
-    WTK_EVENT_MOUSELEAVE,
-    WTK_EVENT_MOUSESCROLL,
-    WTK_EVENT_MOUSEMOTION,
-};
+typedef enum WtkEventType {
+    WtkEventType_KeyUp,
+    WtkEventType_KeyDown,
+    WtkEventType_MouseUp,
+    WtkEventType_MouseDown,
+    WtkEventType_MouseEnter,
+    WtkEventType_MouseLeave,
+    WtkEventType_MouseScroll,
+    WtkEventType_MouseMotion,
+    WtkEventType_WindowClose,
+    WtkEventType_WindowResize,
+    WtkEventType_WindowFocusIn,
+    WtkEventType_WindowFocusOut,
+} WtkEventType;
 
-enum {
-    WTK_KEY_BACKSPACE = 0x08, WTK_KEY_TAB = 0x09, WTK_KEY_ENTER = 0x0a, WTK_KEY_ESCAPE = 0x1b,
+// Ascii keys can use their character representation, e.g. 'w', 'A', '+', ...
+typedef enum WtkKey {
+    WtkKey_Backspace = 0x08, WtkKey_Tab = 0x09, WtkKey_Enter = 0x0a, WtkKey_Escape = 0x1b,
+    WtkKey_Up = 0x80, WtkKey_Down, WtkKey_Left, WtkKey_Right,
+    WtkKey_F1, WtkKey_F2, WtkKey_F3, WtkKey_F4, WtkKey_F5, WtkKey_F6, WtkKey_F7, WtkKey_F8, WtkKey_F9, WtkKey_F10, WtkKey_F11, WtkKey_F12,
+    WtkKey_LeftShift, WtkKey_LeftCtrl, WtkKey_LeftSuper, WtkKey_LeftAlt,
+    WtkKey_RightShift, WtkKey_RightCtrl, WtkKey_RightSuper, WtkKey_RightAlt,
+    WtkKey_Capslock,
+} WtkKey;
 
-    // TODO: Ascii keys
+typedef enum WtkButton {
+    WtkButton_1,
+    WtkButton_2,
+    WtkButton_3,
+    WtkButton_4,
+    WtkButton_5,
+    WtkButton_6,
+    WtkButton_7,
+    WtkButton_8,
+} WtkButton;
 
-    WTK_KEY_UP = 0x80, WTK_KEY_DOWN, WTK_KEY_LEFT, WTK_KEY_RIGHT,
-    WTK_KEY_F1, WTK_KEY_F2, WTK_KEY_F3, WTK_KEY_F4, WTK_KEY_F5, WTK_KEY_F6, WTK_KEY_F7, WTK_KEY_F8, WTK_KEY_F9, WTK_KEY_F10, WTK_KEY_F11, WTK_KEY_F12,
-    WTK_KEY_LSHIFT, WTK_KEY_LCTRL, WTK_KEY_LSUPER, WTK_KEY_LALT,
-    WTK_KEY_RSHIFT, WTK_KEY_RCTRL, WTK_KEY_RSUPER, WTK_KEY_RALT,
-    WTK_KEY_CAPSLOCK,
-};
+typedef enum WtkMod {
+    WtkMod_Shift   = 1U << 0,
+    WtkMod_Ctrl    = 1U << 1,
+    WtkMod_Alt     = 1U << 2,
+    WtkMod_Super   = 1U << 3,
+} WtkMod;
 
-enum {
-    WTK_MOUSE_1, WTK_MOUSE_2, WTK_MOUSE_3, WTK_MOUSE_4, WTK_MOUSE_5, WTK_MOUSE_6, WTK_MOUSE_7, WTK_MOUSE_8,
-};
-
-enum {
-    WTK_MOD_SHIFT   = 1U << 0,
-    WTK_MOD_CTRL    = 1U << 1,
-    WTK_MOD_ALT     = 1U << 2,
-    WTK_MOD_SUPER   = 1U << 3,
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// Structs
-
-typedef union wtk_event_t {
+typedef union WtkEvent {
     struct { int dx, dy;                } scroll, motion;
     struct { int code, sym, mods, x, y; } key, button;
-} wtk_event_t;
+} WtkEvent;
 
-typedef struct wtk_window_t {
-    void (*callback)(struct wtk_window_t *window, int type, wtk_event_t const *event);
+typedef struct WtkWindow WtkWindow;
+
+typedef struct WtkWindowDesc {
+    void (*event_handler)(WtkWindow *window, WtkEventType type, WtkEvent const *event);
     char const *title;
     int x, y, w, h;
-    int closed;
-    void *native;
-} wtk_window_t;
+} WtkWindowDesc;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Prototypes
+// Functions
 
-int         wtk_open_window     (wtk_window_t *window);
-void        wtk_close_window    (wtk_window_t  window);
+WtkWindow  *WtkCreateWindow         (WtkWindowDesc const *desc);
+void        WtkMakeCurrent          (WtkWindow *window);
+void        WtkSwapBuffers          (WtkWindow *window);
+void        WtkPollEvents           (void);
+void        WtkDeleteWindow         (WtkWindow *window);
 
-void        wtk_move_window     (wtk_window_t *window, int x, int y);
-void        wtk_resize_window   (wtk_window_t *window, int w, int h);
-void        wtk_rename_window   (wtk_window_t *window, char const *title);
+void        WtkGetWindowRect        (WtkWindow const *window, int *x, int *y, int *w, int *h);
+bool        WtkGetWindowShouldClose (WtkWindow const *window);
 
-void        wtk_make_current    (wtk_window_t  window);
-void        wtk_swap_buffers    (wtk_window_t  window);
-void        wtk_poll_events     (wtk_window_t *window);
-
+void        WtkSetWindowOrigin      (WtkWindow *window, int x, int y);
+void        WtkSetWindowSize        (WtkWindow *window, int w, int h);
+void        WtkSetWindowTitle       (WtkWindow *window, char const *title);
+void        WtkSetWindowShouldClose (WtkWindow *window, bool should_close);

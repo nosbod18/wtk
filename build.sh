@@ -1,8 +1,6 @@
 #!/bin/bash
-cd "${0%/*}"
+SRCS="src/wtk.c main.c"
+FLGS="-Wall -Wextra -Wno-deprecated-declarations -std=c99 -x objective-c"
+LIBS="-framework Cocoa -framework OpenGL"
 
-OS=$(uname -s | sed -e 's/Linux/linux/' -e 's/Darwin/macos/')
-
-gcc -std=c99 -Wall -Wextra -c src/wtk.$OS.?
-ar crs lib/libwtk.a *.o
-rm *.o
+gcc $FLGS $SRCS $LIBS && ./a.out

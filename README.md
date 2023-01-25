@@ -19,9 +19,6 @@ int main(void) {
 ```
 
 ## Building
-### Unix
-- `make` will build the library and the examples
-- `make libwtk.a` will build just the library
+Simply add the src/ files to your project and list them in your build system. Be sure to link against `-lX11 -lGL` on Linux and `-framework Cocoa -framework OpenGL` on MacOS.
 
-### Windows
 `wtk` only supports MacOS and Linux right now as those are the platforms I use, but I want to get a Windows backend up and running at some point.

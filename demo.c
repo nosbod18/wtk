@@ -1,12 +1,12 @@
 #include "src/wtk.h"
 
-void callback(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
-    if (type == WtkEventType_KeyDown)
+void callback(WtkWindow *window, WtkEvent const *event) {
+    if (event->type == WtkEventType_KeyDown)
         WtkSetWindowShouldClose(window, true);
 }
 
 int main(void) {
-    WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){.event_handler = callback});
+    WtkWindow *window = WtkCreateWindow(&(WtkWindowDesc){.on_event = callback});
     WtkMakeCurrent(window);
 
     while (!WtkGetWindowShouldClose(window)) {

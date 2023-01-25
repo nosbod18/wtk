@@ -1,9 +1,9 @@
 #include "wtk.h"
 #include <stdlib.h> // calloc, free
 
-#if defined(__APPLE__) && defined(__OBJC__) && !defined(WTK_COCOA)
+#if !defined(WTK_COCOA) && (defined(__APPLE__) && defined(__OBJC__))
     #define WTK_COCOA
-#elif defined(__linux__) && !defined(WTK_X11)
+#elif !defined(WTK_X11) && defined(__linux__)
     #define WTK_X11
 #else
     #error "Unsupported platform"
@@ -11,6 +11,8 @@
 
 #if defined(WTK_X11)
     #include <X11/Xlib.h>
+    #include <X11/keysym.h>
+    #include <X11/XKBlib.h>
     #include <GL/glx.h>
 
     typedef GLXContext glXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
@@ -64,30 +66,90 @@ static struct {
 
 #if defined(WTK_X11)
 
-static void postEvent(WtkWindow *window, WtkEventType type, XEvent const *event) {
-    WtkEvent ev = {0};
-    if (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp) {
-        ev.key.code = event->xkey.keycode;
-        ev.key.sym  = event->xkey.keycode;
-        ev.key.mods = event->xkey.state;
-        ev.key.y    = event->xkey.x;
-        ev.key.x    = event->xkey.y;
-    } else if (type == WtkEventType_MouseDown || type == WtkEventType_MouseUp){
-        switch (event->xbutton.button) {
-            case Button4: ev.scroll.dy =  1.0; break;
-            case Button5: ev.scroll.dy = -1.0; break;
-            case 6:       ev.scroll.dx =  1.0; break;
-            case 7:       ev.scroll.dx = -1.0; break;
-            default:
-                ev.button.code = event->xbutton.button - Button1 - 4;
-                ev.button.sym  = event->xbutton.button - Button1 - 4;
-                break;
-        }
-    } else if (type == WtkEventType_MouseMotion) {
-        ev.motion.dx = event->xmotion.x;
-        ev.motion.dy = event->xmotion.y;
+static WtkKey translateKeyCode(int xkey, int state) {
+    xkey = XkbKeycodeToKeysym(G.x11.display, xkey, 0, (state & ShiftMask) ? 1 : 0);
+    switch(xkey) {
+        case XK_BackSpace:  return WtkKey_Backspace;
+        case XK_Tab:        return WtkKey_Tab;
+        case XK_Return:     return WtkKey_Enter;
+        case XK_Escape:     return WtkKey_Escape;
+        case XK_Up:         return WtkKey_Up;
+        case XK_Down:       return WtkKey_Down;
+        case XK_Left:       return WtkKey_Left;
+        case XK_Right:      return WtkKey_Right;
+        case XK_Page_Up:    return WtkKey_PageUp;
+        case XK_Page_Down:  return WtkKey_PageDown;
+        case XK_Home:       return WtkKey_Home;
+        case XK_End:        return WtkKey_End;
+        case XK_Insert:     return WtkKey_Insert;
+        case XK_Delete:     return WtkKey_Delete;
+        case XK_F1:         return WtkKey_F1;
+        case XK_F2:         return WtkKey_F2;
+        case XK_F3:         return WtkKey_F3;
+        case XK_F4:         return WtkKey_F4;
+        case XK_F5:         return WtkKey_F5;
+        case XK_F6:         return WtkKey_F6;
+        case XK_F7:         return WtkKey_F7;
+        case XK_F8:         return WtkKey_F8;
+        case XK_F9:         return WtkKey_F9;
+        case XK_F10:        return WtkKey_F10;
+        case XK_F11:        return WtkKey_F11;
+        case XK_F12:        return WtkKey_F12;
+        case XK_Shift_L:    return WtkKey_LeftShift;
+        case XK_Shift_R:    return WtkKey_RightShift;
+        case XK_Control_L:  return WtkKey_LeftCtrl;
+        case XK_Control_R:  return WtkKey_RightCtrl;
+        case XK_Super_L:    return WtkKey_LeftSuper;
+        case XK_Super_R:    return WtkKey_RightSuper;
+        case XK_Alt_L:      return WtkKey_LeftAlt;
+        case XK_Alt_R:      return WtkKey_RightAlt;
+        case XK_Caps_Lock:  return WtkKey_Capslock;
+        default:            return xkey;
     }
-    window->desc.event_handler(window, type, &ev);
+}
+
+static unsigned int translateState(int state) {
+    unsigned int modifiers = 0;
+
+    if (state & ControlMask) modifiers |= WtkMod_Ctrl;
+    if (state & ShiftMask)   modifiers |= WtkMod_Shift;
+    if (state & Mod1Mask)    modifiers |= WtkMod_Alt;
+    if (state & Mod4Mask)    modifiers |= WtkMod_Super;
+    if (state & LockMask)    modifiers |= WtkMod_CapsLock;
+
+    return modifiers;
+}
+
+static void postEvent(WtkWindow *window, WtkEventType type, XEvent const *xevent) {
+    static WtkEvent previousEvent = {0};
+    WtkEvent event = {.type = type};
+    if (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp) {
+        event.keyCode    = translateKeyCode(xevent->xkey.keycode, xevent->xkey.state);
+        event.modifiers  = xevent->xkey.state;
+        event.location.x = xevent->xkey.x;
+        event.location.y = xevent->xkey.y;
+    } else if (type == WtkEventType_MouseDown || type == WtkEventType_MouseUp) {
+        switch (xevent->xbutton.button) {
+            case Button4: event.delta.y =  1.0; break;
+            case Button5: event.delta.y = -1.0; break;
+            case 6:       event.delta.x =  1.0; break;
+            case 7:       event.delta.x = -1.0; break;
+            default:      event.buttonNumber = xevent->xbutton.button - Button1 - 4; break;
+        }
+        event.modifiers  = xevent->xbutton.state;
+        event.location.x = xevent->xbutton.x;
+        event.location.y = xevent->xbutton.y;
+    } else if (type == WtkEventType_MouseMotion) {
+        event.modifiers  = xevent->xmotion.state;
+        event.location.x = xevent->xmotion.x;
+        event.location.y = xevent->xmotion.y;
+    }
+    event.modifiers = translateState(event.modifiers);
+    event.delta.x = event.location.x - previousEvent.location.x;
+    event.delta.y = event.location.y - previousEvent.location.y;
+
+    window->desc.on_event(window, &event);
+    previousEvent = event;
 }
 
 bool init(void) {
@@ -246,7 +308,7 @@ static void postEvent(WtkWindow *window, WtkEventType type, NSEvent *event) {
         ev.motion.dx = [event deltaX];
         ev.motion.dy = [event deltaY];
     }
-    window->desc.event_handler(window, type, &ev);
+    window->desc.on_event(window, type, &ev);
 }
 
 static float translateYCoordinate(float y) {
@@ -446,13 +508,13 @@ void setWindowTitle(WtkWindow *window, char const *title) {
 /// Common
 ///
 
-static void defaultEventCallback(WtkWindow *window, WtkEventType type, WtkEvent const *event) {
-    (void)window; (void)type; (void)event;
+static void defaultEventCallback(WtkWindow *window, WtkEvent const *event) {
+    (void)window; (void)event;
 }
 
 static void validateDesc(WtkWindow *window) {
     WtkWindowDesc *d = &window->desc;
-    if (!d->event_handler)  d->event_handler = defaultEventCallback;
+    if (!d->on_event)  d->on_event = defaultEventCallback;
     if (!d->title)          d->title = "";
     if (!d->w)              d->w = 640;
     if (!d->h)              d->h = 480;

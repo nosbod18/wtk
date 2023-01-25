@@ -20,6 +20,7 @@ typedef enum WtkEventType {
 typedef enum WtkKey {
     WtkKey_Backspace = 0x08, WtkKey_Tab = 0x09, WtkKey_Enter = 0x0a, WtkKey_Escape = 0x1b,
     WtkKey_Up = 0x80, WtkKey_Down, WtkKey_Left, WtkKey_Right,
+    WtkKey_PageUp, WtkKey_PageDown, WtkKey_Home, WtkKey_End, WtkKey_Insert, WtkKey_Delete,
     WtkKey_F1, WtkKey_F2, WtkKey_F3, WtkKey_F4, WtkKey_F5, WtkKey_F6, WtkKey_F7, WtkKey_F8, WtkKey_F9, WtkKey_F10, WtkKey_F11, WtkKey_F12,
     WtkKey_LeftShift, WtkKey_LeftCtrl, WtkKey_LeftSuper, WtkKey_LeftAlt,
     WtkKey_RightShift, WtkKey_RightCtrl, WtkKey_RightSuper, WtkKey_RightAlt,
@@ -38,21 +39,25 @@ typedef enum WtkButton {
 } WtkButton;
 
 typedef enum WtkMod {
-    WtkMod_Shift   = 1U << 0,
-    WtkMod_Ctrl    = 1U << 1,
-    WtkMod_Alt     = 1U << 2,
-    WtkMod_Super   = 1U << 3,
+    WtkMod_Shift    = 0x01,
+    WtkMod_Ctrl     = 0x02,
+    WtkMod_Alt      = 0x04,
+    WtkMod_Super    = 0x08,
+    WtkMod_CapsLock = 0x10,
 } WtkMod;
 
-typedef union WtkEvent {
-    struct { int dx, dy;                } scroll, motion;
-    struct { int code, sym, mods, x, y; } key, button;
+typedef struct WtkEvent {
+    WtkEventType         type;
+    WtkKey               keyCode;
+    WtkButton            buttonNumber;
+    unsigned int         modifiers;
+    struct { int x, y; } location, delta;
 } WtkEvent;
 
 typedef struct WtkWindow WtkWindow;
 
 typedef struct WtkWindowDesc {
-    void (*event_handler)(WtkWindow *window, WtkEventType type, WtkEvent const *event);
+    void (*on_event)(WtkWindow *window, WtkEvent const *event);
     char const *title;
     int x, y, w, h;
 } WtkWindowDesc;

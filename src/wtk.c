@@ -1,10 +1,10 @@
-#include "../wtk.h"
+#include "wtk.h"
 #include <stdlib.h> // calloc, free
 
-#if !defined(WTK_COCOA) && (defined(__APPLE__) && defined(__OBJC__))
-    #define WTK_COCOA
-#elif !defined(WTK_X11) && defined(__linux__)
+#if !defined(WTK_X11) && defined(__linux__)
     #define WTK_X11
+#elif !defined(WTK_COCOA) && (defined(__APPLE__) && defined(__OBJC__))
+    #define WTK_COCOA
 #else
     #error "Unsupported platform"
 #endif

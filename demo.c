@@ -1,7 +1,7 @@
 #include "src/wtk.h"
 
 void callback(WtkWindow *window, WtkEvent const *event) {
-    if (event->type == WtkEventType_KeyDown)
+    if (event->type == WTK_EVENTTYPE_KEYDOWN)
         WtkSetWindowShouldClose(window, true);
 }
 

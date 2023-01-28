@@ -1,56 +1,56 @@
 #pragma once
 #include <stdbool.h>
 
-typedef enum WtkEventType {
-    WtkEventType_KeyUp,
-    WtkEventType_KeyDown,
-    WtkEventType_MouseUp,
-    WtkEventType_MouseDown,
-    WtkEventType_MouseEnter,
-    WtkEventType_MouseLeave,
-    WtkEventType_MouseScroll,
-    WtkEventType_MouseMotion,
-    WtkEventType_WindowClose,
-    WtkEventType_WindowResize,
-    WtkEventType_WindowFocusIn,
-    WtkEventType_WindowFocusOut,
-} WtkEventType;
+enum {
+    WTK_EVENTTYPE_KEYUP,
+    WTK_EVENTTYPE_KEYDOWN,
+    WTK_EVENTTYPE_MOUSEUP,
+    WTK_EVENTTYPE_MOUSEDOWN,
+    WTK_EVENTTYPE_MOUSEENTER,
+    WTK_EVENTTYPE_MOUSELEAVE,
+    WTK_EVENTTYPE_MOUSESCROLL,
+    WTK_EVENTTYPE_MOUSEMOTION,
+    WTK_EVENTTYPE_WINDOWCLOSE,
+    WTK_EVENTTYPE_WINDOWRESIZE,
+    WTK_EVENTTYPE_WINDOWFOCUSIN,
+    WTK_EVENTTYPE_WINDOWFOCUSOUT,
+};
 
 // Ascii keys can use their character representation, e.g. 'w', 'A', '+', ...
-typedef enum WtkKey {
-    WtkKey_Backspace = 0x08, WtkKey_Tab = 0x09, WtkKey_Enter = 0x0a, WtkKey_Escape = 0x1b,
-    WtkKey_Up = 0x80, WtkKey_Down, WtkKey_Left, WtkKey_Right,
-    WtkKey_PageUp, WtkKey_PageDown, WtkKey_Home, WtkKey_End, WtkKey_Insert, WtkKey_Delete,
-    WtkKey_F1, WtkKey_F2, WtkKey_F3, WtkKey_F4, WtkKey_F5, WtkKey_F6, WtkKey_F7, WtkKey_F8, WtkKey_F9, WtkKey_F10, WtkKey_F11, WtkKey_F12,
-    WtkKey_LeftShift, WtkKey_LeftCtrl, WtkKey_LeftSuper, WtkKey_LeftAlt,
-    WtkKey_RightShift, WtkKey_RightCtrl, WtkKey_RightSuper, WtkKey_RightAlt,
-    WtkKey_Capslock,
-} WtkKey;
+enum {
+    WTK_KEY_BACKSPACE = 0x08, WTK_KEY_TAB = 0x09, WTK_KEY_ENTER = 0x0a, WTK_KEY_ESCAPE = 0x1b,
+    WTK_KEY_UP = 0x80, WTK_KEY_DOWN, WTK_KEY_LEFT, WTK_KEY_RIGHT,
+    WTK_KEY_PAGEUP, WTK_KEY_PAGEDOWN, WTK_KEY_HOME, WTK_KEY_END, WTK_KEY_INSERT, WTK_KEY_DELETE,
+    WTK_KEY_F1, WTK_KEY_F2, WTK_KEY_F3, WTK_KEY_F4, WTK_KEY_F5, WTK_KEY_F6, WTK_KEY_F7, WTK_KEY_F8, WTK_KEY_F9, WTK_KEY_F10, WTK_KEY_F11, WTK_KEY_F12,
+    WTK_KEY_LSHIFT, WTK_KEY_LCTRL, WTK_KEY_LSUPER, WTK_KEY_LALT,
+    WTK_KEY_RSHIFT, WTK_KEY_RCTRL, WTK_KEY_RSUPER, WTK_KEY_RALT,
+    WTK_KEY_CAPSLOCK,
+};
 
-typedef enum WtkButton {
-    WtkButton_1,
-    WtkButton_2,
-    WtkButton_3,
-    WtkButton_4,
-    WtkButton_5,
-    WtkButton_6,
-    WtkButton_7,
-    WtkButton_8,
-} WtkButton;
+enum {
+    WTK_BUTTON_1,
+    WTK_BUTTON_2,
+    WTK_BUTTON_3,
+    WTK_BUTTON_4,
+    WTK_BUTTON_5,
+    WTK_BUTTON_6,
+    WTK_BUTTON_7,
+    WTK_BUTTON_8,
+};
 
-typedef enum WtkMod {
-    WtkMod_Shift    = 0x01,
-    WtkMod_Ctrl     = 0x02,
-    WtkMod_Alt      = 0x04,
-    WtkMod_Super    = 0x08,
-    WtkMod_CapsLock = 0x10,
-} WtkMod;
+enum {
+    WTK_MOD_SHIFT    = 0x01,
+    WTK_MOD_CTRL     = 0x02,
+    WTK_MOD_ALT      = 0x04,
+    WTK_MOD_SUPER    = 0x08,
+    WTK_MOD_CAPSLOCK = 0x10,
+};
 
 typedef struct WtkEvent {
-    WtkEventType         type;
-    WtkKey               keyCode;
-    WtkButton            buttonNumber;
-    unsigned int         modifiers;
+    int type;
+    int keyCode;
+    int buttonNumber;
+    unsigned int modifiers;
     struct { int x, y; } location, delta;
 } WtkEvent;
 
@@ -61,7 +61,6 @@ typedef struct WtkWindowDesc {
     char const *title;
     int x, y, w, h;
 } WtkWindowDesc;
-
 
 WtkWindow  *WtkCreateWindow         (WtkWindowDesc const *desc);
 void        WtkMakeCurrent          (WtkWindow *window);

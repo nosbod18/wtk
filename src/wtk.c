@@ -66,44 +66,44 @@ static struct {
 
 #if defined(WTK_X11)
 
-static WtkKey translateKeyCode(int xkey, int state) {
+static int translateKeyCode(int xkey, int state) {
     xkey = XkbKeycodeToKeysym(G.x11.display, xkey, 0, (state & ShiftMask) ? 1 : 0);
     switch(xkey) {
-        case XK_BackSpace:  return WtkKey_Backspace;
-        case XK_Tab:        return WtkKey_Tab;
-        case XK_Return:     return WtkKey_Enter;
-        case XK_Escape:     return WtkKey_Escape;
-        case XK_Up:         return WtkKey_Up;
-        case XK_Down:       return WtkKey_Down;
-        case XK_Left:       return WtkKey_Left;
-        case XK_Right:      return WtkKey_Right;
-        case XK_Page_Up:    return WtkKey_PageUp;
-        case XK_Page_Down:  return WtkKey_PageDown;
-        case XK_Home:       return WtkKey_Home;
-        case XK_End:        return WtkKey_End;
-        case XK_Insert:     return WtkKey_Insert;
-        case XK_Delete:     return WtkKey_Delete;
-        case XK_F1:         return WtkKey_F1;
-        case XK_F2:         return WtkKey_F2;
-        case XK_F3:         return WtkKey_F3;
-        case XK_F4:         return WtkKey_F4;
-        case XK_F5:         return WtkKey_F5;
-        case XK_F6:         return WtkKey_F6;
-        case XK_F7:         return WtkKey_F7;
-        case XK_F8:         return WtkKey_F8;
-        case XK_F9:         return WtkKey_F9;
-        case XK_F10:        return WtkKey_F10;
-        case XK_F11:        return WtkKey_F11;
-        case XK_F12:        return WtkKey_F12;
-        case XK_Shift_L:    return WtkKey_LeftShift;
-        case XK_Shift_R:    return WtkKey_RightShift;
-        case XK_Control_L:  return WtkKey_LeftCtrl;
-        case XK_Control_R:  return WtkKey_RightCtrl;
-        case XK_Super_L:    return WtkKey_LeftSuper;
-        case XK_Super_R:    return WtkKey_RightSuper;
-        case XK_Alt_L:      return WtkKey_LeftAlt;
-        case XK_Alt_R:      return WtkKey_RightAlt;
-        case XK_Caps_Lock:  return WtkKey_Capslock;
+        case XK_BackSpace:  return WTK_KEY_BACKSPACE;
+        case XK_Tab:        return WTK_KEY_TAB;
+        case XK_Return:     return WTK_KEY_ENTER;
+        case XK_Escape:     return WTK_KEY_ESCAPE;
+        case XK_Up:         return WTK_KEY_UP;
+        case XK_Down:       return WTK_KEY_DOWN;
+        case XK_Left:       return WTK_KEY_LEFT;
+        case XK_Right:      return WTK_KEY_RIGHT;
+        case XK_Page_Up:    return WTK_KEY_PAGEUP;
+        case XK_Page_Down:  return WTK_KEY_PAGEDOWN;
+        case XK_Home:       return WTK_KEY_HOME;
+        case XK_End:        return WTK_KEY_END;
+        case XK_Insert:     return WTK_KEY_INSERT;
+        case XK_Delete:     return WTK_KEY_DELETE;
+        case XK_F1:         return WTK_KEY_F1;
+        case XK_F2:         return WTK_KEY_F2;
+        case XK_F3:         return WTK_KEY_F3;
+        case XK_F4:         return WTK_KEY_F4;
+        case XK_F5:         return WTK_KEY_F5;
+        case XK_F6:         return WTK_KEY_F6;
+        case XK_F7:         return WTK_KEY_F7;
+        case XK_F8:         return WTK_KEY_F8;
+        case XK_F9:         return WTK_KEY_F9;
+        case XK_F10:        return WTK_KEY_F10;
+        case XK_F11:        return WTK_KEY_F11;
+        case XK_F12:        return WTK_KEY_F12;
+        case XK_Shift_L:    return WTK_KEY_LSHIFT;
+        case XK_Shift_R:    return WTK_KEY_RSHIFT;
+        case XK_Control_L:  return WTK_KEY_LCTRL;
+        case XK_Control_R:  return WTK_KEY_RCTRL;
+        case XK_Super_L:    return WTK_KEY_LSUPER;
+        case XK_Super_R:    return WTK_KEY_RSUPER;
+        case XK_Alt_L:      return WTK_KEY_LALT;
+        case XK_Alt_R:      return WTK_KEY_RALT;
+        case XK_Caps_Lock:  return WTK_KEY_CAPSLOCK;
         default:            return xkey;
     }
 }
@@ -111,24 +111,24 @@ static WtkKey translateKeyCode(int xkey, int state) {
 static unsigned int translateState(int state) {
     unsigned int modifiers = 0;
 
-    if (state & ControlMask) modifiers |= WtkMod_Ctrl;
-    if (state & ShiftMask)   modifiers |= WtkMod_Shift;
-    if (state & Mod1Mask)    modifiers |= WtkMod_Alt;
-    if (state & Mod4Mask)    modifiers |= WtkMod_Super;
-    if (state & LockMask)    modifiers |= WtkMod_CapsLock;
+    if (state & ControlMask) modifiers |= WTK_MOD_CTRL;
+    if (state & ShiftMask)   modifiers |= WTK_MOD_SHIFT;
+    if (state & Mod1Mask)    modifiers |= WTK_MOD_ALT;
+    if (state & Mod4Mask)    modifiers |= WTK_MOD_SUPER;
+    if (state & LockMask)    modifiers |= WTK_MOD_CAPSLOCK;
 
     return modifiers;
 }
 
-static void postEvent(WtkWindow *window, WtkEventType type, XEvent const *xevent) {
+static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
     static WtkEvent previousEvent = {0};
     WtkEvent event = {.type = type};
-    if (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp) {
+    if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP) {
         event.keyCode    = translateKeyCode(xevent->xkey.keycode, xevent->xkey.state);
         event.modifiers  = xevent->xkey.state;
         event.location.x = xevent->xkey.x;
         event.location.y = xevent->xkey.y;
-    } else if (type == WtkEventType_MouseDown || type == WtkEventType_MouseUp) {
+    } else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP) {
         switch (xevent->xbutton.button) {
             case Button4: event.delta.y =  1.0; break;
             case Button5: event.delta.y = -1.0; break;
@@ -139,7 +139,7 @@ static void postEvent(WtkWindow *window, WtkEventType type, XEvent const *xevent
         event.modifiers  = xevent->xbutton.state;
         event.location.x = xevent->xbutton.x;
         event.location.y = xevent->xbutton.y;
-    } else if (type == WtkEventType_MouseMotion) {
+    } else if (type == WTK_EVENTTYPE_MOUSEMOTION) {
         event.modifiers  = xevent->xmotion.state;
         event.location.x = xevent->xmotion.x;
         event.location.y = xevent->xmotion.y;
@@ -241,26 +241,26 @@ void pollEvents(void) {
             continue;
 
         switch (event.type) {
-            case KeyPress:      postEvent(window, WtkEventType_KeyDown, &event);        break;
-            case KeyRelease:    postEvent(window, WtkEventType_KeyUp, &event);          break;
-            case ButtonPress:   postEvent(window, WtkEventType_MouseDown, &event);      break;
-            case ButtonRelease: postEvent(window, WtkEventType_MouseUp, &event);        break;
-            case MotionNotify:  postEvent(window, WtkEventType_MouseMotion, &event);    break;
-            case EnterNotify:   postEvent(window, WtkEventType_MouseEnter, &event);     break;
-            case LeaveNotify:   postEvent(window, WtkEventType_MouseLeave, &event);     break;
-            case MapNotify:     postEvent(window, WtkEventType_WindowFocusIn, &event);  break;
-            case UnmapNotify:   postEvent(window, WtkEventType_WindowFocusOut, &event); break;
+            case KeyPress:      postEvent(window, WTK_EVENTTYPE_KEYDOWN, &event);        break;
+            case KeyRelease:    postEvent(window, WTK_EVENTTYPE_KEYUP, &event);          break;
+            case ButtonPress:   postEvent(window, WTK_EVENTTYPE_MOUSEDOWN, &event);      break;
+            case ButtonRelease: postEvent(window, WTK_EVENTTYPE_MOUSEUP, &event);        break;
+            case MotionNotify:  postEvent(window, WTK_EVENTTYPE_MOUSEMOTION, &event);    break;
+            case EnterNotify:   postEvent(window, WTK_EVENTTYPE_MOUSEENTER, &event);     break;
+            case LeaveNotify:   postEvent(window, WTK_EVENTTYPE_MOUSELEAVE, &event);     break;
+            case MapNotify:     postEvent(window, WTK_EVENTTYPE_WINDOWFOCUSIN, &event);  break;
+            case UnmapNotify:   postEvent(window, WTK_EVENTTYPE_WINDOWFOCUSOUT, &event); break;
             case ConfigureNotify: {
                 window->desc.x = event.xconfigure.x;
                 window->desc.y = event.xconfigure.y;
                 window->desc.w = event.xconfigure.width;
                 window->desc.h = event.xconfigure.height;
-                postEvent(window, WtkEventType_WindowResize, &event);
+                postEvent(window, WTK_EVENTTYPE_WINDOWRESIZE, &event);
             } break;
             case ClientMessage: {
                 if ((Atom)event.xclient.data.l[0] == G.x11.wm_delwin) {
                     WtkSetWindowShouldClose(window, true);
-                    postEvent(window, WtkEventType_WindowClose, &event);
+                    postEvent(window, WTK_EVENTTYPE_WINDOWCLOSE, &event);
                 }
             } break;
         }
@@ -290,21 +290,21 @@ void setWindowTitle(WtkWindow *window, char const *title) {
 
 #elif defined(WTK_COCOA)
 
-static void postEvent(WtkWindow *window, WtkEventType type, NSEvent *event) {
+static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
     WtkEvent ev = {0};
-    if (type == WtkEventType_KeyDown || type == WtkEventType_KeyUp) {
+    if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP) {
         ev.key.code = [event keyCode];
         ev.key.sym  = [event keyCode];
         ev.key.mods = [event modifierFlags];
         ev.key.x    = [event locationInWindow].x;
         ev.key.y    = [event locationInWindow].y;
-    } else if (type == WtkEventType_MouseDown || type == WtkEventType_MouseUp) {
+    } else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP) {
         ev.button.code = [event buttonNumber];
         ev.button.sym  = [event buttonNumber];
         ev.button.mods = [event modifierFlags];
         ev.button.x    = [event locationInWindow].x;
         ev.button.y    = [event locationInWindow].y;
-    } else if (type == WtkEventType_MouseScroll) {
+    } else if (type == WTK_EVENTTYPE_MOUSESCROLL) {
         ev.motion.dx = [event deltaX];
         ev.motion.dy = [event deltaY];
     }
@@ -332,7 +332,7 @@ static float translateYCoordinate(float y) {
     [NSApp activateIgnoringOtherApps:YES];
 }
 
--(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
+-(BOOL)applicationShouldTerminateAfterLastWINDOWCLOSEd:(NSApplication *)sender {
     return YES;
 }
 @end
@@ -360,22 +360,22 @@ static float translateYCoordinate(float y) {
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
     WtkSetWindowShouldClose(m_window, true);
-    postEvent(m_window, WtkEventType_WindowClose, NULL);
+    postEvent(m_window, WTK_EVENTTYPE_WINDOWCLOSE, NULL);
     return NO;
 }
 
--(void)keyDown:(NSEvent *)event         { postEvent(m_window, WtkEventType_KeyDown, event); }
--(void)keyUp:(NSEvent *)event           { postEvent(m_window, WtkEventType_KeyUp, event); }
--(void)mouseDown:(NSEvent *)event       { postEvent(m_window, WtkEventType_MouseDown, event); }
--(void)mouseUp:(NSEvent *)event         { postEvent(m_window, WtkEventType_MouseUp, event);   }
+-(void)keyDown:(NSEvent *)event         { postEvent(m_window, WTK_EVENTTYPE_KEYDOWN, event); }
+-(void)keyUp:(NSEvent *)event           { postEvent(m_window, WTK_EVENTTYPE_KEYUP, event); }
+-(void)mouseDown:(NSEvent *)event       { postEvent(m_window, WTK_EVENTTYPE_MOUSEDOWN, event); }
+-(void)mouseUp:(NSEvent *)event         { postEvent(m_window, WTK_EVENTTYPE_MOUSEUP, event);   }
 -(void)rightMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
 -(void)rightMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
 -(void)otherMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
 -(void)otherMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
--(void)mouseEntered:(NSEvent *)event    { postEvent(m_window, WtkEventType_MouseEnter, event); }
--(void)mouseExited:(NSEvent *)event     { postEvent(m_window, WtkEventType_MouseLeave, event); }
--(void)mouseMoved:(NSEvent *)event      { postEvent(m_window, WtkEventType_MouseMotion, event); }
--(void)scrollWheel:(NSEvent *)event     { postEvent(m_window, WtkEventType_MouseScroll, event); }
+-(void)mouseEntered:(NSEvent *)event    { postEvent(m_window, WTK_EVENTTYPE_MOUSEENTER, event); }
+-(void)mouseExited:(NSEvent *)event     { postEvent(m_window, WTK_EVENTTYPE_MOUSELEAVE, event); }
+-(void)mouseMoved:(NSEvent *)event      { postEvent(m_window, WTK_EVENTTYPE_MOUSEMOTION, event); }
+-(void)scrollWheel:(NSEvent *)event     { postEvent(m_window, WTK_EVENTTYPE_MOUSESCROLL, event); }
 
 @end
 

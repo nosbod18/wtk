@@ -1,4 +1,4 @@
-#include "wtk.h"
+#include "../wtk.h"
 #include <stdlib.h> // calloc, free
 
 #if !defined(WTK_COCOA) && (defined(__APPLE__) && defined(__OBJC__))
@@ -29,7 +29,7 @@
 
 struct WtkWindow {
     WtkWindowDesc desc;
-    bool closed;
+    int closed;
 #if defined(WTK_X11)
     Window window;
     GLXContext context;
@@ -152,9 +152,9 @@ static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
     previousEvent = event;
 }
 
-bool init(void) {
+int init(void) {
     if (!(G.x11.display = XOpenDisplay(NULL)))
-        return false;
+        return 0;
 
     G.x11.context = XUniqueContext();
     G.x11.screen  = DefaultScreen(G.x11.display);
@@ -163,14 +163,14 @@ bool init(void) {
     G.x11.depth   = DefaultDepth(G.x11.display, G.x11.screen);
 
     if (!(G.x11.colormap = XCreateColormap(G.x11.display, G.x11.root, G.x11.visual, AllocNone)))
-        return false;
+        return 0;
 
     if (!(G.x11.wm_delwin = XInternAtom(G.x11.display, "WM_DELETE_WINDOW", 0)))
-        return false;
+        return 0;
 
     G.x11.glx_create_ctx_attribs = (glXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
 
-    return true;
+    return 1;
 }
 
 void quit(void) {
@@ -178,7 +178,7 @@ void quit(void) {
     XCloseDisplay(G.x11.display);
 }
 
-bool createWindow(WtkWindow *window) {
+int createWindow(WtkWindow *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
         .colormap = G.x11.colormap
@@ -190,10 +190,10 @@ bool createWindow(WtkWindow *window) {
         0, G.x11.depth, InputOutput,
         G.x11.visual, CWColormap | CWEventMask, &swa
     );
-    if (!window->window) return false;
+    if (!window->window) return 0;
 
     if (!XSetWMProtocols(G.x11.display, window->window, &G.x11.wm_delwin, 1))
-        return false;
+        return 0;
 
     GLint vis_attribs[] = {
         GLX_RENDER_TYPE,  GLX_RGBA_BIT,
@@ -203,7 +203,7 @@ bool createWindow(WtkWindow *window) {
 
     int fbcount = 0;
     GLXFBConfig *fbc = glXChooseFBConfig(G.x11.display, G.x11.screen, vis_attribs, &fbcount);
-    if (!fbc || !fbcount) return false;
+    if (!fbc || !fbcount) return 0;
 
     GLint ctx_attribs[] = {
         GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
@@ -220,7 +220,7 @@ bool createWindow(WtkWindow *window) {
     XSaveContext(G.x11.display, window->window, G.x11.context, (XPointer)window);
     XMapWindow(G.x11.display, window->window);
     XFlush(G.x11.display);
-    return true;
+    return 1;
 }
 
 void makeCurrent(WtkWindow *window) {
@@ -259,7 +259,7 @@ void pollEvents(void) {
             } break;
             case ClientMessage: {
                 if ((Atom)event.xclient.data.l[0] == G.x11.wm_delwin) {
-                    WtkSetWindowShouldClose(window, true);
+                    WtkSetWindowShouldClose(window, 1);
                     postEvent(window, WTK_EVENTTYPE_WINDOWCLOSE, &event);
                 }
             } break;
@@ -359,7 +359,7 @@ static float translateYCoordinate(float y) {
 }
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
-    WtkSetWindowShouldClose(m_window, true);
+    WtkSetWindowShouldClose(m_window, 1);
     postEvent(m_window, WTK_EVENTTYPE_WINDOWCLOSE, NULL);
     return NO;
 }
@@ -379,7 +379,7 @@ static float translateYCoordinate(float y) {
 
 @end
 
-bool init(void) {
+int init(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
@@ -390,7 +390,7 @@ bool init(void) {
     [NSApp activateIgnoringOtherApps:YES];
     [NSApp finishLaunching];
 
-    return true;
+    return 1;
 
     }
 }
@@ -404,17 +404,17 @@ void quit(void) {
     }
 }
 
-bool createWindow(WtkWindow *window) {
+int createWindow(WtkWindow *window) {
     @autoreleasepool {
 
     unsigned styleMask = NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable;
     NSRect frame = NSMakeRect(0, 0, window->desc.w, window->desc.h);
 
     window->window = [[NSWindow alloc] initWithContentRect:frame styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-    if (!window->window) return false;
+    if (!window->window) return 0;
 
     window->view = [[CocoaView alloc] initWithFrame:frame andWindow:window];
-    if (!window->view) return false;
+    if (!window->view) return 0;
 
     [window->window setContentView:window->view];
     [window->window setDelegate:window->view];
@@ -426,7 +426,7 @@ bool createWindow(WtkWindow *window) {
     [window->window makeKeyAndOrderFront:nil];
     [window->window orderFront:nil];
 
-    return true;
+    return 1;
 
     }
 }
@@ -450,7 +450,7 @@ void swapBuffers(WtkWindow *window) {
 void pollEvents(void) {
     @autoreleasepool {
 
-    while (true) {
+    while (1) {
         NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];
         if (!event) break;
 
@@ -567,8 +567,8 @@ void WtkGetWindowRect(WtkWindow const *window, int *x, int *y, int *w, int *h) {
     if (h) *h = window ? window->desc.h : -1;
 }
 
-bool WtkGetWindowShouldClose(WtkWindow const *window) {
-    return window ? window->closed : true;
+int WtkGetWindowShouldClose(WtkWindow const *window) {
+    return window ? window->closed : 1;
 }
 
 void WtkSetWindowOrigin(WtkWindow *window, int x, int y) {
@@ -594,7 +594,7 @@ void WtkSetWindowTitle(WtkWindow *window, char const *title) {
     window->desc.title = title;
 }
 
-void WtkSetWindowShouldClose(WtkWindow *window, bool should_close) {
+void WtkSetWindowShouldClose(WtkWindow *window, int should_close) {
     if (window)
         window->closed = should_close;
 }

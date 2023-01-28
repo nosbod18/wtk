@@ -148,7 +148,7 @@ static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
     event.delta.x = event.location.x - previousEvent.location.x;
     event.delta.y = event.location.y - previousEvent.location.y;
 
-    window->desc.on_event(window, &event);
+    window->desc.callback(window, &event);
     previousEvent = event;
 }
 
@@ -308,7 +308,7 @@ static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
         ev.motion.dx = [event deltaX];
         ev.motion.dy = [event deltaY];
     }
-    window->desc.on_event(window, type, &ev);
+    window->desc.callback(window, type, &ev);
 }
 
 static float translateYCoordinate(float y) {
@@ -513,11 +513,10 @@ static void defaultEventCallback(WtkWindow *window, WtkEvent const *event) {
 }
 
 static void validateDesc(WtkWindow *window) {
-    WtkWindowDesc *d = &window->desc;
-    if (!d->on_event)  d->on_event = defaultEventCallback;
-    if (!d->title)          d->title = "";
-    if (!d->w)              d->w = 640;
-    if (!d->h)              d->h = 480;
+    if (!window->desc.callback) window->desc.callback = defaultEventCallback;
+    if (!window->desc.title)    window->desc.title = "";
+    if (!window->desc.w)        window->desc.w = 640;
+    if (!window->desc.h)        window->desc.h = 480;
 }
 
 WtkWindow *WtkCreateWindow(WtkWindowDesc const *desc) {

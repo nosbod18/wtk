@@ -1,5 +1,8 @@
 #pragma once
-#include <stdbool.h>
+
+///
+/// Enums
+///
 
 enum {
     WTK_EVENTTYPE_KEYUP,
@@ -46,6 +49,12 @@ enum {
     WTK_MOD_CAPSLOCK = 0x10,
 };
 
+///
+/// Structs
+///
+
+typedef struct WtkWindow WtkWindow;
+
 typedef struct WtkEvent {
     int type;
     int keyCode;
@@ -54,13 +63,15 @@ typedef struct WtkEvent {
     struct { int x, y; } location, delta;
 } WtkEvent;
 
-typedef struct WtkWindow WtkWindow;
-
 typedef struct WtkWindowDesc {
-    void (*on_event)(WtkWindow *window, WtkEvent const *event);
+    void (*callback)(WtkWindow *window, WtkEvent const *event);
     char const *title;
     int x, y, w, h;
 } WtkWindowDesc;
+
+///
+/// Prototypes
+///
 
 WtkWindow  *WtkCreateWindow         (WtkWindowDesc const *desc);
 void        WtkMakeCurrent          (WtkWindow *window);
@@ -69,9 +80,9 @@ void        WtkPollEvents           (void);
 void        WtkDeleteWindow         (WtkWindow *window);
 
 void        WtkGetWindowRect        (WtkWindow const *window, int *x, int *y, int *w, int *h);
-bool        WtkGetWindowShouldClose (WtkWindow const *window);
+int         WtkGetWindowShouldClose (WtkWindow const *window);
 
 void        WtkSetWindowOrigin      (WtkWindow *window, int x, int y);
 void        WtkSetWindowSize        (WtkWindow *window, int w, int h);
 void        WtkSetWindowTitle       (WtkWindow *window, char const *title);
-void        WtkSetWindowShouldClose (WtkWindow *window, bool should_close);
+void        WtkSetWindowShouldClose (WtkWindow *window, int should_close);

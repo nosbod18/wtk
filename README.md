@@ -25,8 +25,14 @@ int main(void) {
 ```
 
 ## Building
-Simply drop the files under `src/` to your project and add them to your build system
-- Linux: Link with `-lX11 -lGL`
-- MacOS: Compile with `-x objective-c` and link with `-framework Cocoa -framework OpenGL`
-- Windows: Unfortunately, wtk only supports Linux and MacOS right now
+Simply drop the files under `wtk/` to your project and add them to your build system
+
+### Linux
+Link with `-lX11 -lGL`
+
+### MacOS
+Compile with `-x objective-c` and link with `-framework Cocoa -framework OpenGL`
+
+### Windows
+Unfortunately, wtk only supports Linux and MacOS right now
 

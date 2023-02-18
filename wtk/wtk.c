@@ -1,48 +1,77 @@
 #include "wtk.h"
 #include <stdlib.h> // calloc, free
+#include <stdio.h>
 
-#if !defined(WTK_X11) && defined(__linux__)
-    #define WTK_X11
-#elif !defined(WTK_COCOA) && (defined(__APPLE__) && defined(__OBJC__))
-    #define WTK_COCOA
-#else
-    #error "Unsupported platform"
-#endif
+#if defined(_WIN32)
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #include <windows.h>
+    #include <GL/gl.h>
+    #include <GL/wgl.h>
 
-#if defined(WTK_X11)
+    // https://gist.github.com/nickrolfe/1127313ed1dbf80254b614a721b3ee9c
+    typedef HGLRC WINAPI WglCreateContextAttribsARBProc(HDC hdc, HGLRC hShareContext, const int *attribList);
+    typedef BOOL WINAPI WglChoosePixelFormatARBProc(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
+    
+    #define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
+    #define WGL_CONTEXT_MINOR_VERSION_ARB             0x2092
+    #define WGL_CONTEXT_PROFILE_MASK_ARB              0x9126
+
+    #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB          0x00000001
+
+    #define WGL_DRAW_TO_WINDOW_ARB                    0x2001
+    #define WGL_ACCELERATION_ARB                      0x2003
+    #define WGL_SUPPORT_OPENGL_ARB                    0x2010
+    #define WGL_DOUBLE_BUFFER_ARB                     0x2011
+    #define WGL_PIXEL_TYPE_ARB                        0x2013
+    #define WGL_COLOR_BITS_ARB                        0x2014
+    #define WGL_DEPTH_BITS_ARB                        0x2022
+    #define WGL_STENCIL_BITS_ARB                      0x2023
+
+    #define WGL_FULL_ACCELERATION_ARB                 0x2027
+    #define WGL_TYPE_RGBA_ARB                         0x202B
+#elif defined(__linux__)
     #include <X11/Xlib.h>
     #include <X11/keysym.h>
     #include <X11/XKBlib.h>
     #include <GL/glx.h>
-
-    typedef GLXContext glXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
-#elif defined(WTK_COCOA)
+    typedef GLXContext GlXCreateContextAttribsARBProc(Display *, GLXFBConfig, GLXContext, Bool, int const *);
+#elif defined(__APPLE__)
     #import <Cocoa/Cocoa.h>
-
     @interface CocoaApp : NSObject <NSApplicationDelegate>
     @end
-
     @interface CocoaView : NSOpenGLView <NSWindowDelegate>
     - (id)initWithFrame:(NSRect)frame andWindow:(WtkWindow *)window;
     @end
+#else
+    #error "Unsupported platform"
 #endif
 
 struct WtkWindow {
     WtkWindowDesc desc;
     int closed;
-#if defined(WTK_X11)
+#if defined(_WIN32)
+    HWND window;
+    HDC device;
+    HGLRC context;
+#elif defined(__linux__)
     Window window;
     GLXContext context;
-#elif defined(WTK_COCOA)
+#elif defined(__APPLE__)
     NSWindow *window;
     CocoaView *view;
 #endif
 };
 
 static struct {
-#if defined(WTK_X11)
+#if defined(_WIN32)
     struct {
-        glXCreateContextAttribsARBProc *glx_create_ctx_attribs;
+        WglCreateContextAttribsARBProc *wglCreateContextAttribsARB;
+        WglChoosePixelFormatARBProc *wglChoosePixelFormatARB;
+    } win32;
+#elif defined(__linux__)
+    struct {
+        GlXCreateContextAttribsARBProc *glx_create_ctx_attribs;
         Display *display;
         XContext context;
         Visual *visual;
@@ -52,7 +81,7 @@ static struct {
         int screen;
         int depth;
     } x11;
-#elif defined(WTK_COCOA)
+#elif defined(__APPLE__)
     struct {
         CocoaApp *app;
     } cocoa;
@@ -61,10 +90,191 @@ static struct {
 } G = {0};
 
 ///
+/// Win32
+///
+
+static LRESULT CALLBACK windowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    WtkWindow *window = (WtkWindow *)GetWindowLongPtr(wnd, GWLP_USERDATA);
+
+    switch (msg) {
+        case WM_CLOSE:
+            WtkSetWindowShouldClose(window, 1);
+            window->desc.callback(window, &(WtkEvent){.type = WTK_EVENTTYPE_WINDOWCLOSE});
+            return 0;
+
+        default:
+            break;
+    }
+
+    return DefWindowProc(wnd, msg, wparam, lparam);
+}
+
+static int init(void) {
+    WNDCLASS wnd_class = {
+        .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        .lpfnWndProc = DefWindowProc,
+        .hInstance = GetModuleHandle(NULL),
+        .lpszClassName = "DummyWindowClass"
+    };
+
+    if (!RegisterClass(&wnd_class))
+        return 0;
+
+    HWND dummy_wnd = CreateWindow(
+        wnd_class.lpszClassName, "Dummy OpenGL Window", 0,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        0, 0, wnd_class.hInstance, 0
+    );
+
+    if (!dummy_wnd)
+        return 0;
+
+    HDC dummy_dc = GetDC(dummy_wnd);
+
+    PIXELFORMATDESCRIPTOR pfd = {
+        .nSize = sizeof pfd,
+        .nVersion = 1,
+        .iPixelType = PFD_TYPE_RGBA,
+        .dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        .cColorBits = 32,
+        .cAlphaBits = 8,
+        .iLayerType = PFD_MAIN_PLANE,
+        .cDepthBits = 24,
+        .cStencilBits = 8,
+    };
+
+    int pixel_format = ChoosePixelFormat(dummy_dc, &pfd);
+    if (!pixel_format)
+        return 0;
+
+    if (!SetPixelFormat(dummy_dc, pixel_format, &pfd))
+        return 0;
+
+    HGLRC dummy_ctx = wglCreateContext(dummy_dc);
+    if (!dummy_ctx)
+        return 0;
+
+    if (!wglMakeCurrent(dummy_dc, dummy_ctx))
+        return 0;
+
+    G.win32.wglCreateContextAttribsARB = (WglCreateContextAttribsARBProc *)wglGetProcAddress("wglCreateContextAttribsARB");
+    G.win32.wglChoosePixelFormatARB = (WglChoosePixelFormatARBProc *)wglGetProcAddress("wglChoosePixelFormatARB");
+
+    wglMakeCurrent(dummy_dc, 0);
+    wglDeleteContext(dummy_ctx);
+    ReleaseDC(dummy_wnd, dummy_dc);
+    DestroyWindow(dummy_wnd);
+
+    return 1;
+}
+
+static void quit(void) {
+    // Move along...
+}
+
+static int createWindow(WtkWindow *window) {
+    WNDCLASS wnd_class = {
+        .style = CS_OWNDC,
+        .lpfnWndProc = windowProc,
+        .hInstance = GetModuleHandle(NULL),
+        .hCursor = LoadCursor(0, IDC_ARROW),
+        .lpszClassName = "WtkWindowClass",
+    };
+
+    if (!RegisterClass(&wnd_class))
+        return 0;
+
+    RECT rect = { .right = window->desc.w, .bottom = window->desc.h };
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
+
+    window->window = CreateWindow(
+        wnd_class.lpszClassName, window->desc.title,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
+        NULL, NULL, GetModuleHandle(NULL), NULL
+    );
+
+    if (!window->window)
+        return 0;
+
+    window->device = GetDC(window->window);
+
+    int pf_attribs[] = {
+        WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
+        WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
+        WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
+        WGL_ACCELERATION_ARB,       WGL_FULL_ACCELERATION_ARB,
+        WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
+        WGL_COLOR_BITS_ARB,         32,
+        WGL_DEPTH_BITS_ARB,         24,
+        WGL_STENCIL_BITS_ARB,       8,
+        0
+    };
+
+    int pixel_format;
+    UINT num_formats;
+    G.win32.wglChoosePixelFormatARB(window->device, pf_attribs, 0, 1, &pixel_format, &num_formats);
+    if (!num_formats)
+        return 0;
+
+    PIXELFORMATDESCRIPTOR pfd;
+    DescribePixelFormat(window->device, pixel_format, sizeof pfd, &pfd);
+    if (!SetPixelFormat(window->device, pixel_format, &pfd))
+        return 0;
+
+    int ctx_attribs[] = {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+        WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0,
+    };
+
+    window->context = G.win32.wglCreateContextAttribsARB(window->device, 0, ctx_attribs);
+    if (!window->context)
+        return 0;
+
+    ShowWindow(window->window, SW_SHOW);
+    return 1;
+}
+
+static void makeCurrent(WtkWindow *window) {
+    wglMakeCurrent(window->device, window->context);
+}
+
+static void swapBuffers(WtkWindow *window) {
+    SwapBuffers(window->device);
+}
+
+static void pollEvents(void) {
+    for (MSG msg; PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+static void deleteWindow(WtkWindow *window) {
+    ReleaseDC(window->window, window->device);
+    DestroyWindow(window->window);
+    wglDeleteContext(window->context);
+}
+
+static void setWindowOrigin(WtkWindow *window, int x, int y) {
+    SetWindowPos(window->window, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+}
+
+static void setWindowSize(WtkWindow *window, int w, int h) {
+    SetWindowPos(window->window, NULL, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
+}
+
+static void setWindowTitle(WtkWindow *window, char const *title) {
+    SetWindowText(window->window, title);
+}
+
+///
 /// X11
 ///
 
-#if defined(WTK_X11)
+#if defined(__linux__)
 
 static int translateKeyCode(int xkey, int state) {
     xkey = XkbKeycodeToKeysym(G.x11.display, xkey, 0, (state & ShiftMask) ? 1 : 0);
@@ -168,7 +378,7 @@ int init(void) {
     if (!(G.x11.wm_delwin = XInternAtom(G.x11.display, "WM_DELETE_WINDOW", 0)))
         return 0;
 
-    G.x11.glx_create_ctx_attribs = (glXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
+    G.x11.glx_create_ctx_attribs = (GlXCreateContextAttribsARBProc *)glXGetProcAddressARB((GLubyte const *)"glXCreateContextAttribsARB");
 
     return 1;
 }
@@ -288,7 +498,7 @@ void setWindowTitle(WtkWindow *window, char const *title) {
 /// Cocoa
 ///
 
-#elif defined(WTK_COCOA)
+#elif defined(__APPLE__)
 
 static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
     WtkEvent ev = {0};
@@ -502,7 +712,7 @@ void setWindowTitle(WtkWindow *window, char const *title) {
     }
 }
 
-#endif // WTK_X11 || WTK_COCOA
+#endif // __linux__ || __APPLE__
 
 ///
 /// Common

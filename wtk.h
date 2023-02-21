@@ -57,9 +57,7 @@ typedef struct WtkWindow WtkWindow;
 
 typedef struct WtkEvent {
     int type;
-    int keyCode;
-    int buttonNumber;
-    unsigned int modifiers;
+    int key, button, mods;
     struct { int x, y; } location, delta;
 } WtkEvent;
 
@@ -370,7 +368,7 @@ static void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 
 #elif defined(__linux__)
 
-static int translateKeyCode(int xkey, int state) {
+static int _wtkTranslateKeyCode(int xkey, int state) {
     xkey = XkbKeycodeToKeysym(_wtk.x11.display, xkey, 0, (state & ShiftMask) ? 1 : 0);
     switch(xkey) {
         case XK_BackSpace:  return WTK_KEY_BACKSPACE;
@@ -412,24 +410,24 @@ static int translateKeyCode(int xkey, int state) {
     }
 }
 
-static unsigned int translateState(int state) {
-    unsigned int modifiers = 0;
+static unsigned int _wtkTranslateMods(int state) {
+    unsigned int mods = 0;
 
-    if (state & ControlMask) modifiers |= WTK_MOD_CTRL;
-    if (state & ShiftMask)   modifiers |= WTK_MOD_SHIFT;
-    if (state & Mod1Mask)    modifiers |= WTK_MOD_ALT;
-    if (state & Mod4Mask)    modifiers |= WTK_MOD_SUPER;
-    if (state & LockMask)    modifiers |= WTK_MOD_CAPSLOCK;
+    if (state & ControlMask) mods |= WTK_MOD_CTRL;
+    if (state & ShiftMask)   mods |= WTK_MOD_SHIFT;
+    if (state & Mod1Mask)    mods |= WTK_MOD_ALT;
+    if (state & Mod4Mask)    mods |= WTK_MOD_SUPER;
+    if (state & LockMask)    mods |= WTK_MOD_CAPSLOCK;
 
-    return modifiers;
+    return mods;
 }
 
 static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
     static WtkEvent previousEvent = {0};
     WtkEvent event = {.type = type};
     if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP) {
-        event.keyCode    = translateKeyCode(xevent->xkey.keycode, xevent->xkey.state);
-        event.modifiers  = xevent->xkey.state;
+        event.key        = _wtkTranslateKeyCode(xevent->xkey.keycode, xevent->xkey.state);
+        event.mods       = xevent->xkey.state;
         event.location.x = xevent->xkey.x;
         event.location.y = xevent->xkey.y;
     } else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP) {
@@ -438,17 +436,18 @@ static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
             case Button5: event.delta.y = -1.0; break;
             case 6:       event.delta.x =  1.0; break;
             case 7:       event.delta.x = -1.0; break;
-            default:      event.buttonNumber = xevent->xbutton.button - Button1 - 4; break;
+            default:      event.button  = xevent->xbutton.button - Button1 - 4; break;
         }
-        event.modifiers  = xevent->xbutton.state;
+        event.mods       = xevent->xbutton.state;
         event.location.x = xevent->xbutton.x;
         event.location.y = xevent->xbutton.y;
     } else if (type == WTK_EVENTTYPE_MOUSEMOTION) {
-        event.modifiers  = xevent->xmotion.state;
+        event.mods       = xevent->xmotion.state;
         event.location.x = xevent->xmotion.x;
         event.location.y = xevent->xmotion.y;
     }
-    event.modifiers = translateState(event.modifiers);
+
+    event.mods = _wtkTranslateMods(event.mods);
     event.delta.x = event.location.x - previousEvent.location.x;
     event.delta.y = event.location.y - previousEvent.location.y;
 
@@ -595,27 +594,23 @@ void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 #elif defined(__APPLE__)
 
 static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
-    WtkEvent ev = {0};
-    if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP) {
-        ev.key.code = [event keyCode];
-        ev.key.sym  = [event keyCode];
-        ev.key.mods = [event modifierFlags];
-        ev.key.x    = [event locationInWindow].x;
-        ev.key.y    = [event locationInWindow].y;
-    } else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP) {
-        ev.button.code = [event buttonNumber];
-        ev.button.sym  = [event buttonNumber];
-        ev.button.mods = [event modifierFlags];
-        ev.button.x    = [event locationInWindow].x;
-        ev.button.y    = [event locationInWindow].y;
-    } else if (type == WTK_EVENTTYPE_MOUSESCROLL) {
-        ev.motion.dx = [event deltaX];
-        ev.motion.dy = [event deltaY];
-    }
+    WtkEvent ev = {
+        .mods       = [event modifierFlags],
+        .location.x = [event locationInWindow].x,
+        .location.y = [event locationInWindow].y,
+        .delta.x    = [event deltaX],
+        .delta.y    = [event deltaY]
+    };
+
+    if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP)
+        ev.key = [event keyCode];
+    else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP)
+        ev.button = [event buttonNumber];
+
     window->desc.callback(window, type, &ev);
 }
 
-static float translateYCoordinate(float y) {
+static float _wtkTranslateYCoordinate(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
 }
 
@@ -780,7 +775,7 @@ void _wtkDeleteWindow(WtkWindow *window) {
 void _wtkSetWindowOrigin(WtkWindow *window, int x, int y) {
     @autoreleasepool {
 
-    NSRect rect  = NSMakeRect(x, translateYCoordinate(y + [window->view frame].size.height - 1), 0, 0);
+    NSRect rect  = NSMakeRect(x, _wtkTranslateYCoordinate(y + [window->view frame].size.height - 1), 0, 0);
     NSRect frame = [window->window frameRectForContentRect:rect];
     [window->window setFrameOrigin:frame.origin];
 

@@ -1,9 +1,14 @@
 # wtk
 
-A small, simple, cross-platform window and OpenGL context library
+A single-header cross-platform window and OpenGL context library
 
 ```c
-#include "wtk.h"
+// Windows: Link with `-lopengl32 -lgdi32`
+// Linux:   Link with `-lX11 -lGL`
+// MacOS:   Compile with `-x objective-c` and link with `-framework Cocoa -framework OpenGL`
+
+#define WTK_IMPLEMENTATION
+#include "wtk/wtk.h"
 
 void callback(WtkWindow *window, WtkEvent const *event) {
     if (event->type == WTK_EVENTTYPE_KEYDOWN)
@@ -23,15 +28,3 @@ int main(void) {
 }
 
 ```
-
-## Building
-Simply drop the files under `wtk/` in your project and add them to your build system
-
-### Linux
-Link with `-lX11 -lGL`
-
-### MacOS
-Compile with `-x objective-c` and link with `-framework Cocoa -framework OpenGL`
-
-### Windows (MinGW)
-Link with `-lopengl32 -lgdi32`

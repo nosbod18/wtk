@@ -86,7 +86,7 @@ void        WtkSetWindowSize        (WtkWindow *window, int w, int h);
 void        WtkSetWindowTitle       (WtkWindow *window, char const *title);
 void        WtkSetWindowShouldClose (WtkWindow *window, int should_close);
 
-#if defined(WTK_IMPLEMENTATION)
+#if defined(WTK_IMPL)
 
 #include "wtk.h"
 #include <stdlib.h> // calloc, free
@@ -593,8 +593,9 @@ void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 
 #elif defined(__APPLE__)
 
-static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
+static void postEvent(WtkWindow *window, int type, NSEvent *event) {
     WtkEvent ev = {
+        .type       = type,
         .mods       = [event modifierFlags],
         .location.x = [event locationInWindow].x,
         .location.y = [event locationInWindow].y,
@@ -607,7 +608,7 @@ static void postEvent(WtkWindow *window, WTK_EVENTTYPE type, NSEvent *event) {
     else if (type == WTK_EVENTTYPE_MOUSEDOWN || type == WTK_EVENTTYPE_MOUSEUP)
         ev.button = [event buttonNumber];
 
-    window->desc.callback(window, type, &ev);
+    window->desc.callback(window, &ev);
 }
 
 static float _wtkTranslateYCoordinate(float y) {
@@ -682,7 +683,7 @@ int _wtkInit(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
-    _wtk.cocoa.app = [[_WtkCocoaApp alloc] _wtkInit];
+    _wtk.cocoa.app = [[_WtkCocoaApp alloc] init];
 
     [NSApp setDelegate:_wtk.cocoa.app];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -901,4 +902,4 @@ void WtkSetWindowShouldClose(WtkWindow *window, int should_close) {
         window->closed = should_close;
 }
 
-#endif // WTK_IMPLEMENTATION
+#endif // WTK_IMPL

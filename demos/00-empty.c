@@ -1,5 +1,5 @@
 #define WTK_IMPL
-#include "wtk.h"
+#include "../wtk.h"
 
 int main(void) {
     wtk_window *window = wtk_window_create(&(wtk_window_desc){0});

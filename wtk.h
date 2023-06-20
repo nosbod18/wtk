@@ -53,38 +53,38 @@ enum {
 /// Structs
 ///
 
-typedef struct WtkWindow WtkWindow;
+typedef struct wtk_window wtk_window;
 
-typedef struct WtkEvent {
+typedef struct wtk_event {
     int type;
     int key, button, mods;
     struct { int x, y; } location, delta;
-} WtkEvent;
+} wtk_event;
 
-typedef struct WtkWindowDesc {
-    void (*callback)(WtkWindow *window, WtkEvent const *event);
+typedef struct wtk_window_desc {
+    void (*callback)(wtk_window *window, wtk_event const *event);
     char const *title;
     int x, y, w, h;
-} WtkWindowDesc;
+} wtk_window_desc;
 
 ///
 /// Prototypes
 ///
 
-WtkWindow  *WtkCreateWindow         (WtkWindowDesc const *desc);
-void        WtkMakeCurrent          (WtkWindow *window);
-void        WtkSwapBuffers          (WtkWindow *window);
-void        WtkPollEvents           (void);
-void        WtkDeleteWindow         (WtkWindow *window);
+wtk_window *wtk_window_create       (wtk_window_desc const *desc);
+void        wtk_make_current        (wtk_window *window);
+void        wtk_swap_buffers        (wtk_window *window);
+void        wtk_poll_events         (void);
+void        wtk_window_delete       (wtk_window *window);
 
-void        WtkGetWindowOrigin      (WtkWindow const *window, int *x, int *y);
-void        WtkGetWindowSize        (WtkWindow const *window, int *w, int *h);
-int         WtkGetWindowShouldClose (WtkWindow const *window);
+void        wtk_window_pos          (wtk_window const *window, int *x, int *y);
+void        wtk_window_size         (wtk_window const *window, int *w, int *h);
+int         wtk_window_closed       (wtk_window const *window);
 
-void        WtkSetWindowOrigin      (WtkWindow *window, int x, int y);
-void        WtkSetWindowSize        (WtkWindow *window, int w, int h);
-void        WtkSetWindowTitle       (WtkWindow *window, char const *title);
-void        WtkSetWindowShouldClose (WtkWindow *window, int should_close);
+void        wtk_window_set_pos      (wtk_window *window, int x, int y);
+void        wtk_window_set_size     (wtk_window *window, int w, int h);
+void        wtk_window_set_title    (wtk_window *window, char const *title);
+void        wtk_window_set_closed   (wtk_window *window, int closed);
 
 #if defined(WTK_IMPL)
 
@@ -131,14 +131,14 @@ void        WtkSetWindowShouldClose (WtkWindow *window, int should_close);
     @interface _WtkCocoaApp : NSObject <NSApplicationDelegate>
     @end
     @interface _WtkCocoaView : NSOpenGLView <NSWindowDelegate>
-    - (id)initWithFrame:(NSRect)frame andWindow:(WtkWindow *)window;
+    - (id)initWithFrame:(NSRect)frame andWindow:(wtk_window *)window;
     @end
 #else
     #error "Unsupported platform"
 #endif
 
-struct WtkWindow {
-    WtkWindowDesc desc;
+struct wtk_window {
+    wtk_window_desc desc;
     int closed;
 #if defined(_WIN32)
     HWND window;
@@ -185,13 +185,13 @@ static struct {
 
 #if defined(_WIN32)
 
-static LRESULT CALLBACK _wtkWindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-    WtkWindow *window = (WtkWindow *)GetWindowLongPtr(wnd, GWLP_USERDATA);
+static LRESULT CALLBACK _wtk_window_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    wtk_window *window = (wtk_window *)GetWindowLongPtr(wnd, GWLP_USERDATA);
 
     switch (msg) {
         case WM_CLOSE: {
-            WtkSetWindowShouldClose(window, 1);
-            window->desc.callback(window, &(WtkEvent){.type = WTK_EVENTTYPE_WINDOWCLOSE});
+            wtk_window_set_closed(window, 1);
+            window->desc.callback(window, &(wtk_event){.type = WTK_EVENTTYPE_WINDOWCLOSE});
         } return 0;
 
         default: {
@@ -201,7 +201,7 @@ static LRESULT CALLBACK _wtkWindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM
     return DefWindowProc(wnd, msg, wparam, lparam);
 }
 
-static int _wtkInit(void) {
+static int _wtk_init(void) {
     WNDCLASS wnd_class = {
         .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
         .lpfnWndProc = DefWindowProc,
@@ -224,7 +224,7 @@ static int _wtkInit(void) {
     HDC dummy_dc = GetDC(dummy_wnd);
 
     PIXELFORMATDESCRIPTOR pfd = {
-        .nSize = sizeof pfd,
+        .nsize = sizeof pfd,
         .nVersion = 1,
         .iPixelType = PFD_TYPE_RGBA,
         .dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
@@ -260,17 +260,17 @@ static int _wtkInit(void) {
     return 1;
 }
 
-static void _wtkQuit(void) {
+static void _wtk_quit(void) {
     // Move along...
 }
 
-static int _wtkCreateWindow(WtkWindow *window) {
+static int _wtk_window_create(wtk_window *window) {
     WNDCLASS wnd_class = {
         .style = CS_OWNDC,
-        .lpfnWndProc = _wtkWindowProc,
+        .lpfnWndProc = _wtk_window_proc,
         .hInstance = GetModuleHandle(NULL),
         .hCursor = LoadCursor(0, IDC_ARROW),
-        .lpszClassName = "WtkWindowClass",
+        .lpszClassName = "wtk_window_tClass",
     };
 
     if (!RegisterClass(&wnd_class))
@@ -329,36 +329,36 @@ static int _wtkCreateWindow(WtkWindow *window) {
     return 1;
 }
 
-static void _wtkMakeCurrent(WtkWindow *window) {
+static void _wtk_make_current(wtk_window *window) {
     wglMakeCurrent(window->device, window->context);
 }
 
-static void _wtkSwapBuffers(WtkWindow *window) {
+static void _wtk_swap_buffers(wtk_window *window) {
     SwapBuffers(window->device);
 }
 
-static void _wtkPollEvents(void) {
+static void _wtk_poll_events(void) {
     for (MSG msg; PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 }
 
-static void _wtkDeleteWindow(WtkWindow *window) {
+static void _wtk_window_delete(wtk_window *window) {
     ReleaseDC(window->window, window->device);
     DestroyWindow(window->window);
     wglDeleteContext(window->context);
 }
 
-static void _wtkSetWindowOrigin(WtkWindow *window, int x, int y) {
+static void _wtk_window_set_pos(wtk_window *window, int x, int y) {
     SetWindowPos(window->window, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
-static void _wtkSetWindowSize(WtkWindow *window, int w, int h) {
+static void _wtk_window_set_size(wtk_window *window, int w, int h) {
     SetWindowPos(window->window, NULL, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
 }
 
-static void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
+static void _wtk_window_set_title(wtk_window *window, char const *title) {
     SetWindowText(window->window, title);
 }
 
@@ -368,7 +368,7 @@ static void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 
 #elif defined(__linux__)
 
-static int _wtkTranslateKeyCode(int xkey, int state) {
+static int _wtk_translate_key(int xkey, int state) {
     xkey = XkbKeycodeToKeysym(_wtk.x11.display, xkey, 0, (state & ShiftMask) ? 1 : 0);
     switch(xkey) {
         case XK_BackSpace:  return WTK_KEY_BACKSPACE;
@@ -410,7 +410,7 @@ static int _wtkTranslateKeyCode(int xkey, int state) {
     }
 }
 
-static unsigned int _wtkTranslateMods(int state) {
+static unsigned int _wtk_translate_mods(int state) {
     unsigned int mods = 0;
 
     if (state & ControlMask) mods |= WTK_MOD_CTRL;
@@ -422,11 +422,11 @@ static unsigned int _wtkTranslateMods(int state) {
     return mods;
 }
 
-static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
-    static WtkEvent previousEvent = {0};
-    WtkEvent event = {.type = type};
+static void _wtk_post_event(wtk_window *window, int type, XEvent const *xevent) {
+    static wtk_event previousEvent = {0};
+    wtk_event event = {.type = type};
     if (type == WTK_EVENTTYPE_KEYDOWN || type == WTK_EVENTTYPE_KEYUP) {
-        event.key        = _wtkTranslateKeyCode(xevent->xkey.keycode, xevent->xkey.state);
+        event.key        = _wtk_translate_key(xevent->xkey.keycode, xevent->xkey.state);
         event.mods       = xevent->xkey.state;
         event.location.x = xevent->xkey.x;
         event.location.y = xevent->xkey.y;
@@ -447,7 +447,7 @@ static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
         event.location.y = xevent->xmotion.y;
     }
 
-    event.mods = _wtkTranslateMods(event.mods);
+    event.mods = _wtk_translate_mods(event.mods);
     event.delta.x = event.location.x - previousEvent.location.x;
     event.delta.y = event.location.y - previousEvent.location.y;
 
@@ -455,7 +455,7 @@ static void postEvent(WtkWindow *window, int type, XEvent const *xevent) {
     previousEvent = event;
 }
 
-int _wtkInit(void) {
+int _wtk_init(void) {
     if (!(_wtk.x11.display = XOpenDisplay(NULL)))
         return 0;
 
@@ -476,12 +476,12 @@ int _wtkInit(void) {
     return 1;
 }
 
-void _wtkQuit(void) {
+void _wtk_quit(void) {
     XFreeColormap(_wtk.x11.display, _wtk.x11.colormap);
     XCloseDisplay(_wtk.x11.display);
 }
 
-int _wtkCreateWindow(WtkWindow *window) {
+int _wtk_window_create(wtk_window *window) {
     XSetWindowAttributes swa = {
         .event_mask = StructureNotifyMask|PointerMotionMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|EnterWindowMask|LeaveWindowMask|FocusChangeMask|ExposureMask,
         .colormap = _wtk.x11.colormap
@@ -526,16 +526,16 @@ int _wtkCreateWindow(WtkWindow *window) {
     return 1;
 }
 
-void _wtkMakeCurrent(WtkWindow *window) {
+void _wtk_make_current(wtk_window *window) {
     glXMakeContextCurrent(_wtk.x11.display, window->window, window->window, window->context);
 }
 
-void _wtkSwapBuffers(WtkWindow *window) {
+void _wtk_swap_buffers(wtk_window *window) {
     glXSwapBuffers(_wtk.x11.display, window->window);
 }
 
-void _wtkPollEvents(void) {
-    WtkWindow *window;
+void _wtk_poll_events(void) {
+    wtk_window *window;
     XEvent event;
 
     while (XPending(_wtk.x11.display)) {
@@ -544,46 +544,46 @@ void _wtkPollEvents(void) {
             continue;
 
         switch (event.type) {
-            case KeyPress:      postEvent(window, WTK_EVENTTYPE_KEYDOWN, &event);        break;
-            case KeyRelease:    postEvent(window, WTK_EVENTTYPE_KEYUP, &event);          break;
-            case ButtonPress:   postEvent(window, WTK_EVENTTYPE_MOUSEDOWN, &event);      break;
-            case ButtonRelease: postEvent(window, WTK_EVENTTYPE_MOUSEUP, &event);        break;
-            case MotionNotify:  postEvent(window, WTK_EVENTTYPE_MOUSEMOTION, &event);    break;
-            case EnterNotify:   postEvent(window, WTK_EVENTTYPE_MOUSEENTER, &event);     break;
-            case LeaveNotify:   postEvent(window, WTK_EVENTTYPE_MOUSELEAVE, &event);     break;
-            case MapNotify:     postEvent(window, WTK_EVENTTYPE_WINDOWFOCUSIN, &event);  break;
-            case UnmapNotify:   postEvent(window, WTK_EVENTTYPE_WINDOWFOCUSOUT, &event); break;
+            case KeyPress:      _wtk_post_event(window, WTK_EVENTTYPE_KEYDOWN, &event);        break;
+            case KeyRelease:    _wtk_post_event(window, WTK_EVENTTYPE_KEYUP, &event);          break;
+            case ButtonPress:   _wtk_post_event(window, WTK_EVENTTYPE_MOUSEDOWN, &event);      break;
+            case ButtonRelease: _wtk_post_event(window, WTK_EVENTTYPE_MOUSEUP, &event);        break;
+            case MotionNotify:  _wtk_post_event(window, WTK_EVENTTYPE_MOUSEMOTION, &event);    break;
+            case EnterNotify:   _wtk_post_event(window, WTK_EVENTTYPE_MOUSEENTER, &event);     break;
+            case LeaveNotify:   _wtk_post_event(window, WTK_EVENTTYPE_MOUSELEAVE, &event);     break;
+            case MapNotify:     _wtk_post_event(window, WTK_EVENTTYPE_WINDOWFOCUSIN, &event);  break;
+            case UnmapNotify:   _wtk_post_event(window, WTK_EVENTTYPE_WINDOWFOCUSOUT, &event); break;
             case ConfigureNotify: {
                 window->desc.x = event.xconfigure.x;
                 window->desc.y = event.xconfigure.y;
                 window->desc.w = event.xconfigure.width;
                 window->desc.h = event.xconfigure.height;
-                postEvent(window, WTK_EVENTTYPE_WINDOWRESIZE, &event);
+                _wtk_post_event(window, WTK_EVENTTYPE_WINDOWRESIZE, &event);
             } break;
             case ClientMessage: {
                 if ((Atom)event.xclient.data.l[0] == _wtk.x11.wm_delwin) {
-                    WtkSetWindowShouldClose(window, 1);
-                    postEvent(window, WTK_EVENTTYPE_WINDOWCLOSE, &event);
+                    wtk_window_set_closed(window, 1);
+                    _wtk_post_event(window, WTK_EVENTTYPE_WINDOWCLOSE, &event);
                 }
             } break;
         }
     }
 }
 
-void _wtkDeleteWindow(WtkWindow *window) {
+void _wtk_window_delete(wtk_window *window) {
     glXDestroyContext(_wtk.x11.display, window->context);
     XDestroyWindow(_wtk.x11.display, window->window);
 }
 
-void _wtkSetWindowOrigin(WtkWindow *window, int x, int y) {
+void _wtk_window_set_pos(wtk_window *window, int x, int y) {
     XMoveWindow(_wtk.x11.display, window->window, x, y);
 }
 
-void _wtkSetWindowSize(WtkWindow *window, int w, int h) {
+void _wtk_window_set_size(wtk_window *window, int w, int h) {
     XResizeWindow(_wtk.x11.display, window->window, (unsigned int)w, (unsigned int)h);
 }
 
-void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
+void _wtk_window_set_title(wtk_window *window, char const *title) {
     XStoreName(_wtk.x11.display, window->window, title);
 }
 
@@ -593,8 +593,8 @@ void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 
 #elif defined(__APPLE__)
 
-static void postEvent(WtkWindow *window, int type, NSEvent *event) {
-    WtkEvent ev = {
+static void _wtk_post_event(wtk_window *window, int type, NSEvent *event) {
+    wtk_event ev = {
         .type       = type,
         .mods       = [event modifierFlags],
         .location.x = [event locationInWindow].x,
@@ -611,7 +611,7 @@ static void postEvent(WtkWindow *window, int type, NSEvent *event) {
     window->desc.callback(window, &ev);
 }
 
-static float _wtkTranslateYCoordinate(float y) {
+static float _wtk_translate_y(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
 }
 
@@ -638,10 +638,10 @@ static float _wtkTranslateYCoordinate(float y) {
 @end
 
 @implementation _WtkCocoaView {
-    WtkWindow *m_window;
+    wtk_window *m_window;
 }
 
-- (id)initWithFrame:(NSRect)frame andWindow:(WtkWindow *)window  {
+- (id)initWithFrame:(NSRect)frame andWindow:(wtk_window *)window  {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFAOpenGLProfile,   NSOpenGLProfileVersion4_1Core,
         NSOpenGLPFAMultisample,
@@ -659,27 +659,27 @@ static float _wtkTranslateYCoordinate(float y) {
 }
 
 -(BOOL)windowShouldClose:(NSNotification *)notification {
-    WtkSetWindowShouldClose(m_window, 1);
-    postEvent(m_window, WTK_EVENTTYPE_WINDOWCLOSE, NULL);
+    wtk_window_set_closed(m_window, 1);
+    _wtk_post_event(m_window, WTK_EVENTTYPE_WINDOWCLOSE, NULL);
     return NO;
 }
 
--(void)keyDown:(NSEvent *)event         { postEvent(m_window, WTK_EVENTTYPE_KEYDOWN, event); }
--(void)keyUp:(NSEvent *)event           { postEvent(m_window, WTK_EVENTTYPE_KEYUP, event); }
--(void)mouseDown:(NSEvent *)event       { postEvent(m_window, WTK_EVENTTYPE_MOUSEDOWN, event); }
--(void)mouseUp:(NSEvent *)event         { postEvent(m_window, WTK_EVENTTYPE_MOUSEUP, event);   }
+-(void)keyDown:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYDOWN, event); }
+-(void)keyUp:(NSEvent *)event           { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYUP, event); }
+-(void)mouseDown:(NSEvent *)event       { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEDOWN, event); }
+-(void)mouseUp:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEUP, event);   }
 -(void)rightMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
 -(void)rightMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
 -(void)otherMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
 -(void)otherMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
--(void)mouseEntered:(NSEvent *)event    { postEvent(m_window, WTK_EVENTTYPE_MOUSEENTER, event); }
--(void)mouseExited:(NSEvent *)event     { postEvent(m_window, WTK_EVENTTYPE_MOUSELEAVE, event); }
--(void)mouseMoved:(NSEvent *)event      { postEvent(m_window, WTK_EVENTTYPE_MOUSEMOTION, event); }
--(void)scrollWheel:(NSEvent *)event     { postEvent(m_window, WTK_EVENTTYPE_MOUSESCROLL, event); }
+-(void)mouseEntered:(NSEvent *)event    { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEENTER, event); }
+-(void)mouseExited:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSELEAVE, event); }
+-(void)mouseMoved:(NSEvent *)event      { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEMOTION, event); }
+-(void)scrollWheel:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSESCROLL, event); }
 
 @end
 
-int _wtkInit(void) {
+int _wtk_init(void) {
     @autoreleasepool {
 
     [NSApplication sharedApplication];
@@ -695,7 +695,7 @@ int _wtkInit(void) {
     }
 }
 
-void _wtkQuit(void) {
+void _wtk_quit(void) {
     @autoreleasepool {
 
     [NSApp terminate:nil];
@@ -704,7 +704,7 @@ void _wtkQuit(void) {
     }
 }
 
-int _wtkCreateWindow(WtkWindow *window) {
+int _wtk_window_create(wtk_window *window) {
     @autoreleasepool {
 
     unsigned styleMask = NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable;
@@ -731,7 +731,7 @@ int _wtkCreateWindow(WtkWindow *window) {
     }
 }
 
-void _wtkMakeCurrent(WtkWindow *window) {
+void _wtk_make_current(wtk_window *window) {
     @autoreleasepool {
 
     [[window->view openGLContext] makeCurrentContext];
@@ -739,7 +739,7 @@ void _wtkMakeCurrent(WtkWindow *window) {
     }
 }
 
-void _wtkSwapBuffers(WtkWindow *window) {
+void _wtk_swap_buffers(wtk_window *window) {
     @autoreleasepool {
 
     [[window->view openGLContext] flushBuffer];
@@ -747,7 +747,7 @@ void _wtkSwapBuffers(WtkWindow *window) {
     }
 }
 
-void _wtkPollEvents(void) {
+void _wtk_poll_events(void) {
     @autoreleasepool {
 
     while (1) {
@@ -760,7 +760,7 @@ void _wtkPollEvents(void) {
     }
 }
 
-void _wtkDeleteWindow(WtkWindow *window) {
+void _wtk_window_delete(wtk_window *window) {
     @autoreleasepool {
 
     if (window->window) {
@@ -773,17 +773,17 @@ void _wtkDeleteWindow(WtkWindow *window) {
     }
 }
 
-void _wtkSetWindowOrigin(WtkWindow *window, int x, int y) {
+void _wtk_window_set_pos(wtk_window *window, int x, int y) {
     @autoreleasepool {
 
-    NSRect rect  = NSMakeRect(x, _wtkTranslateYCoordinate(y + [window->view frame].size.height - 1), 0, 0);
+    NSRect rect  = NSMakeRect(x, _wtk_translate_y(y + [window->view frame].size.height - 1), 0, 0);
     NSRect frame = [window->window frameRectForContentRect:rect];
     [window->window setFrameOrigin:frame.origin];
 
     }
 }
 
-void _wtkSetWindowSize(WtkWindow *window, int w, int h) {
+void _wtk_window_set_size(wtk_window *window, int w, int h) {
     @autoreleasepool {
 
     NSRect contentRect = [window->window contentRectForFrameRect:[window->window frame]];
@@ -794,7 +794,7 @@ void _wtkSetWindowSize(WtkWindow *window, int w, int h) {
     }
 }
 
-void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
+void _wtk_window_set_title(wtk_window *window, char const *title) {
     @autoreleasepool {
 
     [window->window setTitle:@(title)];
@@ -808,29 +808,29 @@ void _wtkSetWindowTitle(WtkWindow *window, char const *title) {
 /// Common
 ///
 
-static void _wtkDefaultEventCallback(WtkWindow *window, WtkEvent const *event) {
+static void _wtk_default_event_callback(wtk_window *window, wtk_event const *event) {
     (void)window; (void)event;
 }
 
-static void _wtkValidateDesc(WtkWindow *window) {
-    if (!window->desc.callback) window->desc.callback = _wtkDefaultEventCallback;
+static void _wtk_validate_desc(wtk_window *window) {
+    if (!window->desc.callback) window->desc.callback = _wtk_default_event_callback;
     if (!window->desc.title)    window->desc.title = "";
     if (!window->desc.w)        window->desc.w = 640;
     if (!window->desc.h)        window->desc.h = 480;
 }
 
-WtkWindow *WtkCreateWindow(WtkWindowDesc const *desc) {
-    if (!desc || (_wtk.num_windows == 0 && !_wtkInit()))
+wtk_window *wtk_window_create(wtk_window_desc const *desc) {
+    if (!desc || (_wtk.num_windows == 0 && !_wtk_init()))
         return NULL;
 
-    WtkWindow *window = calloc(1, sizeof *window);
+    wtk_window *window = calloc(1, sizeof *window);
     if (!window) return NULL;
 
     window->desc = *desc;
-    _wtkValidateDesc(window);
+    _wtk_validate_desc(window);
 
-    if (!_wtkCreateWindow(window)) {
-        WtkDeleteWindow(window);
+    if (!_wtk_window_create(window)) {
+        wtk_window_delete(window);
         return NULL;
     }
 
@@ -838,68 +838,68 @@ WtkWindow *WtkCreateWindow(WtkWindowDesc const *desc) {
     return window;
 }
 
-void WtkMakeCurrent(WtkWindow *window) {
-    if (window) _wtkMakeCurrent(window);
+void wtk_make_current(wtk_window *window) {
+    if (window) _wtk_make_current(window);
 }
 
-void WtkSwapBuffers(WtkWindow *window) {
-    if (window) _wtkSwapBuffers(window);
+void wtk_swap_buffers(wtk_window *window) {
+    if (window) _wtk_swap_buffers(window);
 }
 
-void WtkPollEvents(void) {
-    _wtkPollEvents();
+void wtk_poll_events(void) {
+    _wtk_poll_events();
 }
 
-void WtkDeleteWindow(WtkWindow *window) {
+void wtk_window_delete(wtk_window *window) {
     if (!window) return;
 
-    _wtkDeleteWindow(window);
+    _wtk_window_delete(window);
     free(window);
 
     if (--_wtk.num_windows == 0)
-        _wtkQuit();
+        _wtk_quit();
 }
 
-void WtkGetWindowOrigin(WtkWindow const *window, int *x, int *y) {
+void wtk_window_pos(wtk_window const *window, int *x, int *y) {
     if (x) *x = window ? window->desc.x : -1;
     if (y) *y = window ? window->desc.y : -1;
 }
 
-void WtkGetWindowSize(WtkWindow const *window, int *w, int *h) {
+void wtk_window_size(wtk_window const *window, int *w, int *h) {
     if (w) *w = window ? window->desc.w : -1;
     if (h) *h = window ? window->desc.h : -1;
 }
 
-int WtkGetWindowShouldClose(WtkWindow const *window) {
+int wtk_window_closed(wtk_window const *window) {
     return window ? window->closed : 1;
 }
 
-void WtkSetWindowOrigin(WtkWindow *window, int x, int y) {
+void wtk_window_set_pos(wtk_window *window, int x, int y) {
     if (!window || x < 0 || y < 0) return;
 
-    _wtkSetWindowOrigin(window, x, y);
+    _wtk_window_set_pos(window, x, y);
     window->desc.x = x;
     window->desc.y = y;
 }
 
-void WtkSetWindowSize(WtkWindow *window, int w, int h) {
+void wtk_window_set_size(wtk_window *window, int w, int h) {
     if (!window || w < 0 || h < 0) return;
 
-    _wtkSetWindowSize(window, w, h);
+    _wtk_window_set_size(window, w, h);
     window->desc.w = w;
     window->desc.h = h;
 }
 
-void WtkSetWindowTitle(WtkWindow *window, char const *title) {
+void wtk_window_set_title(wtk_window *window, char const *title) {
     if (!window || !title) return;
 
-    _wtkSetWindowTitle(window, title);
+    _wtk_window_set_title(window, title);
     window->desc.title = title;
 }
 
-void WtkSetWindowShouldClose(WtkWindow *window, int should_close) {
+void wtk_window_set_closed(wtk_window *window, int closed) {
     if (window)
-        window->closed = should_close;
+        window->closed = closed;
 }
 
 #endif // WTK_IMPL

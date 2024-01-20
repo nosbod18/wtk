@@ -107,7 +107,7 @@ void            wtk_window_set_closed   (wtk_window_t *window, int closed);
         #define WTK_API_WIN32
     #elif defined(__linux__)
         #define WTK_API_X11
-    #elif defined(__APPLE__) && defined(__OBJC__)
+    #elif defined(__APPLE__)
         #define WTK_API_COCOA
     #else
         #error "Unsupported platform"

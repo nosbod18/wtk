@@ -96,7 +96,7 @@ void            wtk_window_set_closed   (wtk_window_t *window, int closed);
 ///                                                                         ///
 ///////////////////////////////////////////////////////////////////////////////
 
-//#if defined(WTK_IMPL)
+#if defined(WTK_IMPL)
 
 #include "wtk.h"
 #include <stdlib.h> // calloc, free
@@ -148,13 +148,14 @@ void            wtk_window_set_closed   (wtk_window_t *window, int closed);
     @interface _WtkCocoaApp : NSObject <NSApplicationDelegate>
     @end
     @interface _WtkCocoaView : NSOpenGLView <NSWindowDelegate>
-    - (id)initWithFrame:(NSRect)frame andWindow:(wtk_window_t *)window;
+    - (id)initWithFrame:(NSRect)frame window:(wtk_window_t *)window;
     @end
 #endif
 
 struct wtk_window_t {
     wtk_window_desc_t desc;
     int x, y, closed;
+    wtk_window_t *next;
 #if defined(WTK_API_WIN32)
     HWND window;
     HDC device;
@@ -191,11 +192,10 @@ static struct {
         _WtkCocoaApp *app;
     } cocoa;
 #endif
-    int num_windows;
+    wtk_window_t *window_list;
 } _wtk = {0};
 
-///////////////////////////////////////////////////////////////////////////////
-/// Win32
+// Win32 {{{
 
 #if defined(WTK_API_WIN32)
 
@@ -376,8 +376,8 @@ static void _wtk_window_set_title(wtk_window_t *window, char const *title) {
     SetWindowText(window->window, title);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// X11
+// }}}
+// X11 {{{
 
 #elif defined(WTK_API_X11)
 
@@ -600,8 +600,8 @@ void _wtk_window_set_title(wtk_window_t *window, char const *title) {
     XStoreName(_wtk.x11.display, window->window, title);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// Cocoa
+// }}}
+// Cocoa {{{
 
 #elif defined(WTK_API_COCOA)
 
@@ -621,12 +621,12 @@ static void _wtk_post_event(wtk_window_t *window, int type, NSEvent *event) {
     window->desc.callback(window, &ev);
 }
 
-static float _wtk_translate_y(float y) {
+static float _wtk_flip_y(float y) {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
 }
 
 @implementation _WtkCocoaApp
--(void)applicationWillFinishLaunching:(NSNotification *)notification {
+- (void)applicationWillFinishLaunching:(NSNotification *)notification {
     id menubar = [[NSMenu new] autorelease];
     id appMenuItem = [[NSMenuItem new] autorelease];
     id appMenu = [[NSMenu new] autorelease];
@@ -638,12 +638,19 @@ static float _wtk_translate_y(float y) {
     [appMenu addItem:quitMenuItem];
     [appMenuItem setSubmenu:appMenu];
     [NSApp setMainMenu:menubar];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-    [NSApp activateIgnoringOtherApps:YES];
 }
 
--(BOOL)applicationShouldTerminateAfterLastWINDOWCLOSEd:(NSApplication *)sender {
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
     return YES;
+}
+
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    for (wtk_window_t *window = _wtk.window_list; window; window = window->next) {
+        wtk_window_set_closed(window, 1);
+        window->desc.callback(window, &(wtk_event_t){.type = WTK_EVENTTYPE_WINDOWCLOSE});
+    }
+
+    return NSTerminateCancel;
 }
 @end
 
@@ -651,7 +658,7 @@ static float _wtk_translate_y(float y) {
     wtk_window_t *m_window;
 }
 
-- (id)initWithFrame:(NSRect)frame andWindow:(wtk_window_t *)window  {
+- (id)initWithFrame:(NSRect)frame window:(wtk_window_t *)window  {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFAOpenGLProfile,   NSOpenGLProfileVersion4_1Core,
         NSOpenGLPFAMultisample,
@@ -668,24 +675,24 @@ static float _wtk_translate_y(float y) {
     return self;
 }
 
--(BOOL)windowShouldClose:(NSNotification *)notification {
+- (BOOL)windowShouldClose:(NSNotification *)notification {
     wtk_window_set_closed(m_window, 1);
     _wtk_post_event(m_window, WTK_EVENTTYPE_WINDOWCLOSE, NULL);
     return NO;
 }
 
--(void)keyDown:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYDOWN, event); }
--(void)keyUp:(NSEvent *)event           { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYUP, event); }
--(void)mouseDown:(NSEvent *)event       { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEDOWN, event); }
--(void)mouseUp:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEUP, event);   }
--(void)rightMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
--(void)rightMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
--(void)otherMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
--(void)otherMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
--(void)mouseEntered:(NSEvent *)event    { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEENTER, event); }
--(void)mouseExited:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSELEAVE, event); }
--(void)mouseMoved:(NSEvent *)event      { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEMOTION, event); }
--(void)scrollWheel:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSESCROLL, event); }
+- (void)keyDown:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYDOWN, event); }
+- (void)keyUp:(NSEvent *)event           { _wtk_post_event(m_window, WTK_EVENTTYPE_KEYUP, event); }
+- (void)mouseDown:(NSEvent *)event       { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEDOWN, event); }
+- (void)mouseUp:(NSEvent *)event         { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEUP, event);   }
+- (void)rightMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
+- (void)rightMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
+- (void)otherMouseDown:(NSEvent *)event  { [self mouseDown:event]; }
+- (void)otherMouseUp:(NSEvent *)event    { [self mouseUp:event];   }
+- (void)mouseEntered:(NSEvent *)event    { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEENTER, event); }
+- (void)mouseExited:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSELEAVE, event); }
+- (void)mouseMoved:(NSEvent *)event      { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSEMOTION, event); }
+- (void)scrollWheel:(NSEvent *)event     { _wtk_post_event(m_window, WTK_EVENTTYPE_MOUSESCROLL, event); }
 
 @end
 
@@ -723,18 +730,16 @@ int _wtk_window_create(wtk_window_t *window) {
     window->window = [[NSWindow alloc] initWithContentRect:frame styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
     if (!window->window) return 0;
 
-    window->view = [[_WtkCocoaView alloc] initWithFrame:frame andWindow:window];
+    window->view = [[_WtkCocoaView alloc] initWithFrame:frame window:window];
     if (!window->view) return 0;
 
     [window->window setContentView:window->view];
     [window->window setDelegate:window->view];
     [window->window makeFirstResponder:window->view];
-
     [window->window setAcceptsMouseMovedEvents:YES];
     [window->window setRestorable:NO];
-    [window->window center];
     [window->window makeKeyAndOrderFront:nil];
-    [window->window orderFront:nil];
+    [window->window center];
 
     return 1;
 
@@ -760,12 +765,8 @@ void _wtk_window_swap_buffers(wtk_window_t *window) {
 void _wtk_poll_events(void) {
     @autoreleasepool {
 
-    while (1) {
-        NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];
-        if (!event) break;
-
+    for (NSEvent *event; (event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];))
         [NSApp sendEvent:event];
-    }
 
     }
 }
@@ -786,7 +787,7 @@ void _wtk_window_delete(wtk_window_t *window) {
 void _wtk_window_set_pos(wtk_window_t *window, int x, int y) {
     @autoreleasepool {
 
-    NSRect rect  = NSMakeRect(x, _wtk_translate_y(y + [window->view frame].size.height - 1), 0, 0);
+    NSRect rect  = NSMakeRect(x, _wtk_flip_y(y + [window->view frame].size.height - 1), 0, 0);
     NSRect frame = [window->window frameRectForContentRect:rect];
     [window->window setFrameOrigin:frame.origin];
 
@@ -814,8 +815,8 @@ void _wtk_window_set_title(wtk_window_t *window, char const *title) {
 
 #endif // WTK_API_WIN32 || WTK_API_X11 || WTK_API_COCOA
 
-///////////////////////////////////////////////////////////////////////////////
-/// Common
+// }}}
+// Common {{{
 
 static void _wtk_default_event_callback(wtk_window_t *window, wtk_event_t const *event) {
     (void)window; (void)event;
@@ -829,8 +830,12 @@ static void _wtk_validate_desc(wtk_window_t *window) {
 }
 
 wtk_window_t *wtk_window_create(wtk_window_desc_t const *desc) {
-    if (!desc || (_wtk.num_windows == 0 && !_wtk_init()))
+    if (!desc)
         return NULL;
+
+    if (!_wtk.window_list)
+        if (!_wtk_init())
+            return NULL;
 
     wtk_window_t *window = calloc(1, sizeof *window);
     if (!window) return NULL;
@@ -843,16 +848,20 @@ wtk_window_t *wtk_window_create(wtk_window_desc_t const *desc) {
         return NULL;
     }
 
-    _wtk.num_windows++;
+    window->next = _wtk.window_list;
+    _wtk.window_list = window;
+
     return window;
 }
 
 void wtk_window_make_current(wtk_window_t *window) {
-    if (window) _wtk_window_make_current(window);
+    if (window)
+        _wtk_window_make_current(window);
 }
 
 void wtk_window_swap_buffers(wtk_window_t *window) {
-    if (window) _wtk_window_swap_buffers(window);
+    if (window)
+        _wtk_window_swap_buffers(window);
 }
 
 void wtk_poll_events(void) {
@@ -865,7 +874,12 @@ void wtk_window_delete(wtk_window_t *window) {
     _wtk_window_delete(window);
     free(window);
 
-    if (--_wtk.num_windows == 0)
+    wtk_window_t **prev = &_wtk.window_list;
+    while (*prev != window)
+        prev = &((*prev)->next);
+    *prev = window->next;
+
+    if (!_wtk.window_list)
         _wtk_quit();
 }
 
@@ -911,4 +925,6 @@ void wtk_window_set_closed(wtk_window_t *window, int closed) {
         window->closed = closed;
 }
 
-//#endif // WTK_IMPL
+// }}}
+
+#endif // WTK_IMPL

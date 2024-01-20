@@ -765,7 +765,7 @@ void _wtk_window_swap_buffers(wtk_window_t *window) {
 void _wtk_poll_events(void) {
     @autoreleasepool {
 
-    for (NSEvent *event; (event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES];))
+    for (NSEvent *event; (event = [NSApp nextEventMatchingMask:NSEventMaskAny untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES]);)
         [NSApp sendEvent:event];
 
     }

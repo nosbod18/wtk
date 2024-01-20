@@ -83,6 +83,7 @@ void            wtk_poll_events         (void);
 
 void            wtk_window_pos          (wtk_window_t const *window, int *x, int *y);
 void            wtk_window_size         (wtk_window_t const *window, int *w, int *h);
+void            wtk_window_fbsize       (wtk_window_t const *window, int *w, int *h);
 int             wtk_window_closed       (wtk_window_t const *window);
 
 void            wtk_window_set_pos      (wtk_window_t *window, int x, int y);
@@ -96,7 +97,7 @@ void            wtk_window_set_closed   (wtk_window_t *window, int closed);
 ///                                                                         ///
 ///////////////////////////////////////////////////////////////////////////////
 
-#if defined(WTK_IMPL)
+//#if defined(WTK_IMPL)
 
 #include "wtk.h"
 #include <stdlib.h> // calloc, free
@@ -107,10 +108,8 @@ void            wtk_window_set_closed   (wtk_window_t *window, int closed);
         #define WTK_API_WIN32
     #elif defined(__linux__)
         #define WTK_API_X11
-    #elif defined(__APPLE__)
+    #elif defined(__APPLE__) && defined(__OBJC__)
         #define WTK_API_COCOA
-    #else
-        #error "Unsupported platform"
     #endif
 #endif
 
@@ -784,6 +783,36 @@ void _wtk_window_delete(wtk_window_t *window) {
     }
 }
 
+void _wtk_window_pos(wtk_window_t const *window, int *x, int *y) {
+    @autoreleasepool {
+
+    CGPoint pos = [window->view frame].origin;
+    if (x) *x = pos.x;
+    if (y) *y = pos.y;
+
+    }
+}
+
+void _wtk_window_size(wtk_window_t const *window, int *w, int *h) {
+    @autoreleasepool {
+
+    CGSize size = [window->view frame].size;
+    if (w) *w = size.width;
+    if (h) *h = size.height;
+
+    }
+}
+
+void _wtk_window_fbsize(wtk_window_t const *window, int *w, int *h) {
+    @autoreleasepool {
+
+    CGSize size = [window->view convertRectToBacking:[window->view frame]].size;
+    if (w) *w = size.width;
+    if (h) *h = size.height;
+
+    }
+}
+
 void _wtk_window_set_pos(wtk_window_t *window, int x, int y) {
     @autoreleasepool {
 
@@ -884,13 +913,48 @@ void wtk_window_delete(wtk_window_t *window) {
 }
 
 void wtk_window_pos(wtk_window_t const *window, int *x, int *y) {
-    if (x) *x = window ? window->x : -1;
-    if (y) *y = window ? window->y : -1;
+    if (!window) {
+        if (x) *x = -1;
+        if (y) *y = -1;
+        return;
+    }
+
+#if defined(WTK_API_COCOA)
+    _wtk_window_pos(window, x, y);
+#else
+    if (x) *x = window->x;
+    if (y) *y = window->y;
+#endif
 }
 
 void wtk_window_size(wtk_window_t const *window, int *w, int *h) {
-    if (w) *w = window ? window->desc.w : -1;
-    if (h) *h = window ? window->desc.h : -1;
+    if (!window) {
+        if (w) *w = -1;
+        if (h) *h = -1;
+        return;
+    }
+
+#if defined(WTK_API_COCOA)
+    _wtk_window_size(window, w, h);
+#else
+    if (w) *w = window->desc.w;
+    if (h) *h = window->desc.h;
+#endif
+}
+
+void wtk_window_fbsize(wtk_window_t const *window, int *w, int *h) {
+    if (!window) {
+        if (w) *w = -1;
+        if (h) *h = -1;
+        return;
+    }
+
+#if defined(WTK_API_COCOA)
+    _wtk_window_fbsize(window, w, h);
+#else
+    if (w) *w = window->desc.w;
+    if (h) *h = window->desc.h;
+#endif
 }
 
 int wtk_window_closed(wtk_window_t const *window) {
@@ -927,4 +991,4 @@ void wtk_window_set_closed(wtk_window_t *window, int closed) {
 
 // }}}
 
-#endif // WTK_IMPL
+//#endif // WTK_IMPL
